@@ -25,6 +25,7 @@ defineExpose({
       liters: Number(liters.value) || 0,
       pricePerLiter: Number(price.value) || 0,
       total: Number(total.value) || 0,
+      pumpPhotoFile: pumpPhotoFile.value || null,
     }
   }
 })

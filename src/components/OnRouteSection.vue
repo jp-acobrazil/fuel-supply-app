@@ -15,6 +15,7 @@ defineExpose({
       stationCnpj: cnpj.value,
       stationName: station.value,
       obs: notes.value,
+      attachments: attachments.value,
     }
   }
 })
@@ -31,17 +32,18 @@ defineExpose({
       <input v-model="station" placeholder="Posto XYZ" />
     </label>
 
+    
+    <label class="field">
+      <span>Observações</span>
+      <textarea v-model="notes" placeholder="Digite aqui..." rows="4" />
+    </label>
+
     <div class="field file">
       <span>Outros anexos</span>
       <input ref="attachInput" type="file" multiple @change="onAttachChange" style="display:none" />
       <button type="button" class="upload" aria-label="upload" @click="triggerAttach">⬆</button>
       <small v-if="attachments.length" class="hint">{{ attachments.length }} arquivo(s) selecionado(s)</small>
     </div>
-
-    <label class="field">
-      <span>Observações</span>
-      <textarea v-model="notes" placeholder="Digite aqui..." rows="4" />
-    </label>
   </div>
 </template>
 

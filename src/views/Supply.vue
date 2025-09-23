@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import FuelSection from '../components/FuelSection.vue'
 import VehicleSection from '../components/VehicleSection.vue'
 import OnRouteSection from '../components/OnRouteSection.vue'
@@ -8,6 +9,7 @@ import api from '../services/api'
 const fuelRef = ref(null)
 const vehicleRef = ref(null)
 const routeRef = ref(null)
+const router = useRouter()
 
 const loading = ref(false)
 const message = ref('')
@@ -31,7 +33,7 @@ async function submitSupply() {
     const v = vehicleRef.value?.getData?.() || {}
     const r = routeRef.value?.getData?.() || {}
 
-    // Mapear para o payload esperado pela API
+    // Mapear para o payload esperado pela API (dados primários)
     const payload = {
       driverId: 98, // TODO: pegar do auth/estado do app
       liters: toNumber(f.liters),
@@ -51,9 +53,28 @@ async function submitSupply() {
       return
     }
 
-    // const { data } = await api.post('/supplies', payload)
-    message.value = 'Abastecimento cadastrado com sucesso.'
-    // opcional: redirecionar ou limpar
+    // Preparar FormData p/ multipart: supply (JSON) + arquivos (se houver)
+    const form = new FormData()
+    form.append('supply', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
+
+    // anexar arquivos opcionais
+    if (f.pumpPhotoFile) {
+      form.append('pumpPhoto', f.pumpPhotoFile)
+    }
+    if (v.odoPhoto) {
+      form.append('odometerPhoto', v.odoPhoto)
+    }
+    if (Array.isArray(r.attachments)) {
+      r.attachments.forEach((file, idx) => {
+        if (file) form.append('attachments', file)
+      })
+    }
+
+    // Enviar como multipart/form-data (Axios define Content-Type com boundary automaticamente)
+  const { data } = await api.post('/supplies', form)
+  message.value = 'Abastecimento cadastrado com sucesso.'
+  // Redirecionar para Home já atualizada
+  router.push({ name: 'home', query: { r: Date.now() } })
   } catch (err) {
     console.error(err)
     message.value = err?.response?.data?.message || 'Falha ao cadastrar abastecimento.'
@@ -95,7 +116,8 @@ async function submitSupply() {
     </main>
 
     <footer class="action-bar">
-      <button class="primary" :disabled="loading" @click="submitSupply">{{ loading ? 'Enviando...' : 'Enviar' }}</button>
+      <button class="primary" :disabled="loading" @click="submitSupply">{{ loading ? 'Enviando...' : 'Enviar'
+        }}</button>
     </footer>
   </div>
 
@@ -212,5 +234,12 @@ async function submitSupply() {
   opacity: .6;
 }
 
-.feedback { color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+.feedback {
+  color: #065f46;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
 </style>

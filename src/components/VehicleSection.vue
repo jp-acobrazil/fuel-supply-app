@@ -15,6 +15,7 @@ defineExpose({
       plate: plate.value,
       fuelType: fuel.value,
       odometer: Number(odometer.value) || 0,
+      odoPhoto: odoPhoto.value || null,
     }
   }
 })
