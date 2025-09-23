@@ -1,7 +1,66 @@
 <script setup>
+import { ref } from 'vue'
 import FuelSection from '../components/FuelSection.vue'
 import VehicleSection from '../components/VehicleSection.vue'
 import OnRouteSection from '../components/OnRouteSection.vue'
+import api from '../services/api'
+
+const fuelRef = ref(null)
+const vehicleRef = ref(null)
+const routeRef = ref(null)
+
+const loading = ref(false)
+const message = ref('')
+
+function toNumber(val) {
+  if (val === undefined || val === null) return 0
+  const s = String(val).replace(',', '.')
+  const n = Number(s)
+  return isNaN(n) ? 0 : n
+}
+function onlyDigits(val) {
+  return String(val || '').replace(/\D+/g, '')
+}
+
+async function submitSupply() {
+  try {
+    loading.value = true
+    message.value = ''
+
+    const f = fuelRef.value?.getData?.() || {}
+    const v = vehicleRef.value?.getData?.() || {}
+    const r = routeRef.value?.getData?.() || {}
+
+    // Mapear para o payload esperado pela API
+    const payload = {
+      driverId: 98, // TODO: pegar do auth/estado do app
+      liters: toNumber(f.liters),
+      pricePerLiter: toNumber(f.pricePerLiter),
+      plate: v.plate,
+      fuelType: v.fuelType,
+      odometer: toNumber(v.odometer),
+      stationCnpj: onlyDigits(r.stationCnpj),
+      obs: r.obs,
+    }
+
+    console.log('Payload', payload)
+
+    // validação simples
+    if (!payload.liters || !payload.pricePerLiter || !payload.plate) {
+      message.value = 'Preencha litros, preço do litro e placa.'
+      return
+    }
+
+    // const { data } = await api.post('/supplies', payload)
+    message.value = 'Abastecimento cadastrado com sucesso.'
+    // opcional: redirecionar ou limpar
+  } catch (err) {
+    console.error(err)
+    message.value = err?.response?.data?.message || 'Falha ao cadastrar abastecimento.'
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
@@ -19,23 +78,24 @@ import OnRouteSection from '../components/OnRouteSection.vue'
 
       <section class="card">
         <h2 class="card-title">Combustível</h2>
-        <FuelSection />
+        <FuelSection ref="fuelRef" />
       </section>
 
       <section class="card">
         <h2 class="card-title">Veículo</h2>
-        <VehicleSection />
+        <VehicleSection ref="vehicleRef" />
       </section>
 
       <section class="card">
         <h2 class="card-title">Em Rota</h2>
-        <OnRouteSection />
+        <OnRouteSection ref="routeRef" />
       </section>
+      <p v-if="message" class="feedback">{{ message }}</p>
       <div class="bottom-spacer" />
     </main>
 
     <footer class="action-bar">
-      <button class="primary">Enviar</button>
+      <button class="primary" :disabled="loading" @click="submitSupply">{{ loading ? 'Enviando...' : 'Enviar' }}</button>
     </footer>
   </div>
 
@@ -147,4 +207,10 @@ import OnRouteSection from '../components/OnRouteSection.vue'
   font-weight: 700;
   font-size: 16px;
 }
+
+.action-bar .primary[disabled] {
+  opacity: .6;
+}
+
+.feedback { color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
 </style>

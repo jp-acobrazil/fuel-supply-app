@@ -19,6 +19,15 @@ watch([liters, price], ([l, p]) => {
     total.value = ''
   }
 })
+defineExpose({
+  getData() {
+    return {
+      liters: Number(liters.value) || 0,
+      pricePerLiter: Number(price.value) || 0,
+      total: Number(total.value) || 0,
+    }
+  }
+})
 </script>
 
 <template>

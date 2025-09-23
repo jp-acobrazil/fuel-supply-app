@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import "./style.css";
 import App from "./App.vue";
+import router from "./router/index.js";
 import PrimeVue from "primevue/config";
 import "primeicons/primeicons.css";
 
@@ -14,5 +15,7 @@ app.use(PrimeVue, {
     },
   },
 });
+
+app.use(router);
 
 app.mount("#app");

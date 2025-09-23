@@ -9,6 +9,15 @@ const attachments = ref([])
 const attachInput = ref(null)
 function triggerAttach() { attachInput.value?.click() }
 function onAttachChange(e) { attachments.value = Array.from(e.target.files || []) }
+defineExpose({
+  getData() {
+    return {
+      stationCnpj: cnpj.value,
+      stationName: station.value,
+      obs: notes.value,
+    }
+  }
+})
 </script>
 
 <template>

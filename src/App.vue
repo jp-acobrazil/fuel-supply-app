@@ -1,10 +1,10 @@
 <script setup>
-import Supply from './views/Supply.vue'
+// App shell usa o router-view
 </script>
 
 <template>
-  <Supply />
-
+  <router-view />
+  
 </template>
 
 <style scoped>

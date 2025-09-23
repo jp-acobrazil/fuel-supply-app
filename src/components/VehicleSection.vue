@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 
 const plate = ref('')
-const type = ref('')
 const fuel = ref('')
 const odometer = ref('')
 
@@ -10,6 +9,15 @@ const odoPhoto = ref(null)
 const odoInput = ref(null)
 function triggerOdoUpload() { odoInput.value?.click() }
 function onOdoChange(e) { odoPhoto.value = e.target.files?.[0] ?? null }
+defineExpose({
+  getData() {
+    return {
+      plate: plate.value,
+      fuelType: fuel.value,
+      odometer: Number(odometer.value) || 0,
+    }
+  }
+})
 </script>
 
 <template>
@@ -17,10 +25,6 @@ function onOdoChange(e) { odoPhoto.value = e.target.files?.[0] ?? null }
     <label class="field">
       <span>Placa</span>
       <input v-model="plate" placeholder="ABC-1234" autocapitalize="characters" @input="plate = plate.toUpperCase()" />
-    </label>
-    <label class="field">
-      <span>Tipo do veículo</span>
-      <input v-model="type" placeholder="Caminhão, Van..." autocapitalize="sentences" />
     </label>
 
     <label class="field">
