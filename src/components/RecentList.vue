@@ -8,7 +8,6 @@ const props = defineProps({
 
 <template>
     <section class="card">
-        <h2 class="section-title">{{ props.title }}</h2>
         <div class="table">
             <div class="thead">
                 <div v-for="h in props.headers" :key="h" class="th">{{ h }}</div>
@@ -58,15 +57,24 @@ const props = defineProps({
 }
 
 .thead {
-    font-size: 11px;
+    font-size: 12px;
     color: #6b7280;
     border-bottom: 1px solid #e5e7eb;
     padding-bottom: 6px;
 }
 
+.th {
+    text-align: center;
+}
+
 .tbody .tr {
     padding: 8px 0;
     border-bottom: 1px solid #f1f5f9;
+}
+
+.tr {
+    font-size: 12px;
+    text-align: center;
 }
 
 .td.id .link {

@@ -1,19 +1,58 @@
 <script setup>
+import { ref, onMounted } from 'vue'
 import HomeWidgets from '../components/HomeWidgets.vue'
 import RecentList from '../components/RecentList.vue'
 import FabActions from '../components/FabActions.vue'
+import api from '../services/api'
 
 const abastecimentosHeaders = ['ID', 'Placa', 'Data', 'Valor', 'Status']
-const abastecimentosRows = [
-  { id: '#0125', placa: 'OJF4J54', data: '25/09/25', valor: 'R$ 475,88', statusColor: 'green' },
-  { id: '#0132', placa: 'OJF4J54', data: '28/09/25', valor: 'R$ 502,75', statusColor: 'orange' }
-]
+const abastecimentosRows = ref([])
 
 const checklistHeaders = ['ID', 'Placa', 'Data', 'Rota', 'Status']
 const checklistRows = [
   { id: '#0125', placa: 'OJF4J54', data: '25/09/25', valor: 'Início', statusColor: 'green' },
   { id: '#0132', placa: 'OJF4J54', data: '28/09/25', valor: 'Fim', statusColor: 'orange' }
 ]
+
+function padId(n) { return `#${String(n).padStart(4, '0')}` }
+function formatDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
+}
+function formatCurrency(v) {
+  const n = Number(v)
+  const val = isNaN(n) ? 0 : n
+  return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+async function loadAbastecimentos() {
+  try {
+    const { data } = await api.get('/supplies')
+    const items = Array.isArray(data) ? data : []
+    // ordenar desc por data
+    items.sort((a, b) => new Date(b.date) - new Date(a.date))
+    const last5 = items.slice(0, 5)
+    abastecimentosRows.value = last5.map((s, idx) => {
+      const valor = (Number(s.liters) || 0) * (Number(s.pricePerLiter) || 0)
+      return {
+        id: padId(s.id),
+        placa: s?.vehicle?.plate || '-',
+        data: formatDate(s.date),
+        valor: formatCurrency(valor),
+        statusColor: idx % 2 === 0 ? 'green' : 'orange', // mock
+      }
+    })
+  } catch (e) {
+    console.error('Erro ao carregar abastecimentos', e)
+    abastecimentosRows.value = []
+  }
+}
+
+onMounted(loadAbastecimentos)
 </script>
 
 <template>
@@ -33,8 +72,7 @@ const checklistRows = [
 
       <section class="card">
         <h2 class="card-title">Ult. Abastecimentos</h2>
-        <RecentList :headers="abastecimentosHeaders" :rows="abastecimentosRows" title="Ult. Abastecimentos"
-         />
+  <RecentList :headers="abastecimentosHeaders" :rows="abastecimentosRows" title="Ult. Abastecimentos" />
       </section>
 
       <section class="card">
