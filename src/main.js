@@ -4,6 +4,9 @@ import App from "./App.vue";
 import router from "./router/index.js";
 import PrimeVue from "primevue/config";
 import "primeicons/primeicons.css";
+import axios from "axios";
+
+axios.defaults.withCredentials = true;
 
 const app = createApp(App);
 

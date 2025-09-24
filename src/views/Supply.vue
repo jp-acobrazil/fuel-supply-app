@@ -1,15 +1,24 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import FuelSection from '../components/FuelSection.vue'
 import VehicleSection from '../components/VehicleSection.vue'
 import OnRouteSection from '../components/OnRouteSection.vue'
 import api from '../services/api'
+import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
 
 const fuelRef = ref(null)
 const vehicleRef = ref(null)
 const routeRef = ref(null)
 const router = useRouter()
+const driverId = ref(null)
+
+onMounted(async () => {
+  // Carregar informações do usuário e obter o ID do motorista
+  await fetchCurrentUser()
+  driverId.value = getCurrentDriverId()
+  console.log('ID do motorista:', driverId.value)
+})
 
 const loading = ref(false)
 const message = ref('')
@@ -35,7 +44,7 @@ async function submitSupply() {
 
     // Mapear para o payload esperado pela API (dados primários)
     const payload = {
-      driverId: 98, // TODO: pegar do auth/estado do app
+      driverId: driverId.value || getCurrentDriverId(), // ID do motorista obtido do usuário logado
       liters: toNumber(f.liters),
       pricePerLiter: toNumber(f.pricePerLiter),
       plate: v.plate,
@@ -46,8 +55,14 @@ async function submitSupply() {
     }
 
     console.log('Payload', payload)
+    console.log('Driver ID atual:', driverId.value, 'getCurrentDriverId():', getCurrentDriverId())
 
     // validação simples
+    if (!payload.driverId) {
+      message.value = 'Erro: ID do motorista não encontrado. Recarregue a página.'
+      return
+    }
+    
     if (!payload.liters || !payload.pricePerLiter || !payload.plate) {
       message.value = 'Preencha litros, preço do litro e placa.'
       return
