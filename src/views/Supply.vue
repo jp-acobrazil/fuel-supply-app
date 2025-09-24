@@ -44,7 +44,7 @@ async function submitSupply() {
 
     // Mapear para o payload esperado pela API (dados primários)
     const payload = {
-      driverId: driverId.value || getCurrentDriverId(), // ID do motorista obtido do usuário logado
+      driverId: driverId.value,
       liters: toNumber(f.liters),
       pricePerLiter: toNumber(f.pricePerLiter),
       plate: v.plate,
@@ -56,40 +56,53 @@ async function submitSupply() {
 
     console.log('Payload', payload)
     console.log('Driver ID atual:', driverId.value, 'getCurrentDriverId():', getCurrentDriverId())
-
-    // validação simples
-    if (!payload.driverId) {
-      message.value = 'Erro: ID do motorista não encontrado. Recarregue a página.'
-      return
-    }
     
     if (!payload.liters || !payload.pricePerLiter || !payload.plate) {
       message.value = 'Preencha litros, preço do litro e placa.'
       return
     }
 
-    // Preparar FormData p/ multipart: supply (JSON) + arquivos (se houver)
-    const form = new FormData()
-    form.append('supply', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
-
-    // anexar arquivos opcionais
-    if (f.pumpPhotoFile) {
-      form.append('pumpPhoto', f.pumpPhotoFile)
+    // 1. Criar o supply com JSON
+    console.log('Enviando payload JSON:', payload)
+    const { data: supplyResponse } = await api.post('/supplies', payload, {
+      headers: { 'Content-Type': 'application/json' }
+    })
+    
+    console.log('Supply criado:', supplyResponse)
+    const supplyId = supplyResponse.id
+    
+    // 2. Enviar arquivos se houver algum
+    const hasFiles = f.pumpPhotoFile || v.odoPhoto || (Array.isArray(r.attachments) && r.attachments.length > 0)
+    
+    if (hasFiles) {
+      console.log('Enviando arquivos para supply ID:', supplyId)
+      const filesForm = new FormData()
+      
+      if (f.pumpPhotoFile) {
+        filesForm.append('pumpPhoto', f.pumpPhotoFile)
+        console.log('Anexando pumpPhoto:', f.pumpPhotoFile.name)
+      }
+      if (v.odoPhoto) {
+        filesForm.append('odometerPhoto', v.odoPhoto)
+        console.log('Anexando odometerPhoto:', v.odoPhoto.name)
+      }
+      if (Array.isArray(r.attachments)) {
+        r.attachments.forEach((file, idx) => {
+          if (file) {
+            filesForm.append('attachments', file)
+            console.log(`Anexando attachment ${idx}:`, file.name)
+          }
+        })
+      }
+      
+      // Upload dos arquivos
+      await api.post(`/supplies/${supplyId}/files`, filesForm)
+      console.log('Arquivos enviados com sucesso!')
     }
-    if (v.odoPhoto) {
-      form.append('odometerPhoto', v.odoPhoto)
-    }
-    if (Array.isArray(r.attachments)) {
-      r.attachments.forEach((file, idx) => {
-        if (file) form.append('attachments', file)
-      })
-    }
-
-    // Enviar como multipart/form-data (Axios define Content-Type com boundary automaticamente)
-  const { data } = await api.post('/supplies', form)
-  message.value = 'Abastecimento cadastrado com sucesso.'
-  // Redirecionar para Home já atualizada
-  router.push({ name: 'home', query: { r: Date.now() } })
+    
+    message.value = 'Abastecimento cadastrado com sucesso.'
+    // Redirecionar para Home já atualizada
+    router.push({ name: 'home', query: { r: Date.now() } })
   } catch (err) {
     console.error(err)
     message.value = err?.response?.data?.message || 'Falha ao cadastrar abastecimento.'
