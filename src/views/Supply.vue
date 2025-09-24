@@ -6,6 +6,7 @@ import VehicleSection from '../components/VehicleSection.vue'
 import OnRouteSection from '../components/OnRouteSection.vue'
 import api from '../services/api'
 import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
+import { compressImage, validateFileSize, formatFileSize } from '../utils/fileUtils'
 
 const fuelRef = ref(null)
 const vehicleRef = ref(null)
@@ -78,24 +79,54 @@ async function submitSupply() {
       console.log('Enviando arquivos para supply ID:', supplyId)
       const filesForm = new FormData()
       
+      // Comprimir e validar arquivos antes do envio
       if (f.pumpPhotoFile) {
-        filesForm.append('pumpPhoto', f.pumpPhotoFile)
-        console.log('Anexando pumpPhoto:', f.pumpPhotoFile.name)
-      }
-      if (v.odoPhoto) {
-        filesForm.append('odometerPhoto', v.odoPhoto)
-        console.log('Anexando odometerPhoto:', v.odoPhoto.name)
-      }
-      if (Array.isArray(r.attachments)) {
-        r.attachments.forEach((file, idx) => {
-          if (file) {
-            filesForm.append('attachments', file)
-            console.log(`Anexando attachment ${idx}:`, file.name)
-          }
-        })
+        console.log(`pumpPhoto original: ${formatFileSize(f.pumpPhotoFile.size)}`)
+        const compressedPump = await compressImage(f.pumpPhotoFile, 1280, 720, 0.7, 1024)
+        console.log(`pumpPhoto comprimida: ${formatFileSize(compressedPump.size)}`)
+        
+        if (!validateFileSize(compressedPump, 1024)) { // 1MB limite
+          throw new Error(`Foto da bomba muito grande: ${formatFileSize(compressedPump.size)}. Máximo: 1MB`)
+        }
+        
+        filesForm.append('pumpPhoto', compressedPump)
       }
       
-      // Upload dos arquivos
+      if (v.odoPhoto) {
+        console.log(`odometerPhoto original: ${formatFileSize(v.odoPhoto.size)}`)
+        const compressedOdo = await compressImage(v.odoPhoto, 1280, 720, 0.7, 1024)
+        console.log(`odometerPhoto comprimida: ${formatFileSize(compressedOdo.size)}`)
+        
+        if (!validateFileSize(compressedOdo, 1024)) {
+          throw new Error(`Foto do hodômetro muito grande: ${formatFileSize(compressedOdo.size)}. Máximo: 1MB`)
+        }
+        
+        filesForm.append('odometerPhoto', compressedOdo)
+      }
+      
+      if (Array.isArray(r.attachments)) {
+        for (let i = 0; i < r.attachments.length; i++) {
+          const file = r.attachments[i]
+          if (file) {
+            console.log(`attachment ${i} original: ${formatFileSize(file.size)}`)
+            
+            let processedFile = file
+            // Comprimir se for imagem
+            if (file.type.startsWith('image/')) {
+              processedFile = await compressImage(file, 1280, 720, 0.7, 1024)
+              console.log(`attachment ${i} comprimido: ${formatFileSize(processedFile.size)}`)
+            }
+            
+            if (!validateFileSize(processedFile, 1024)) {
+              throw new Error(`Anexo "${file.name}" muito grande: ${formatFileSize(processedFile.size)}. Máximo: 1MB`)
+            }
+            
+            filesForm.append('attachments', processedFile)
+          }
+        }
+      }
+      
+      // Upload dos arquivos comprimidos
       await api.post(`/supplies/${supplyId}/files`, filesForm)
       console.log('Arquivos enviados com sucesso!')
     }
