@@ -50,9 +50,16 @@ const filtered = computed(()=> {
   })
 })
 
+function statusColor(s) {
+  const code = (s?.status || '').toUpperCase()
+  if (code === 'A' || code === 'APPROVED') return 'green'
+  if (code === 'R' || code === 'REJECTED') return 'red'
+  if (code === 'C' || code === 'CREATED' || code === 'PENDING') return 'orange'
+  return 'gray'
+}
+
 function openDetail(s) {
-  // placeholder para futura rota de detalhe
-  router.push({ name: 'supply-edit', params: { id: s.id } })
+  router.push({ name: 'supply-detail', params: { id: s.id } })
 }
 
 // Popover de ações
@@ -122,7 +129,6 @@ onUnmounted(() => {
                 <th>Data abastec.</th>
                 <th>Valor</th>
                 <th>Status</th>
-                <th>Em rota</th>
                 <th></th>
               </tr>
             </thead>
@@ -134,8 +140,7 @@ onUnmounted(() => {
                 <td>{{ s?.vehicle?.fuelType || s.fuelType || '-' }}</td>
                 <td>{{ formatDate(s.date) }}</td>
                 <td>{{ formatCurrency((Number(s.liters)||0) * (Number(s.pricePerLiter)||0)) }}</td>
-                <td><span class="dot" :class="{ green: (s.id %2===0), orange:(s.id%2!==0) }"></span></td>
-                <td>{{ (s.onRoute ? 'S' : 'N') }}</td>
+                <td><span class="dot" :class="statusColor(s)"></span></td>
                 <td class="row-actions">
                   <button class="icon-btn" @click="toggleRowMenu(s, $event.currentTarget)">⋯</button>
                   <teleport to="body">
@@ -186,6 +191,8 @@ tbody tr:last-child { border-bottom:none; }
 .dot { width:10px; height:10px; border-radius:50%; display:inline-block; background:#9ca3af; }
 .dot.green { background:#059669; }
 .dot.orange { background:#ea8800; }
+.dot.red { background:#dc2626; }
+.dot.gray { background:#9ca3af; }
 .row-actions { position:relative; }
 .icon-btn { background:transparent; border:none; cursor:pointer; font-size:18px; line-height:1; padding:4px 6px; }
 .pop-actions { position:absolute; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:4px; display:flex; flex-direction:column; min-width:140px; box-shadow:0 6px 22px -4px rgba(0,0,0,.18),0 4px 10px -2px rgba(0,0,0,.08); z-index:9999; }

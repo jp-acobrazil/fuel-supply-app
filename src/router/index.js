@@ -3,6 +3,7 @@ import axios from "axios";
 import DriverHome from "../views/DriverHome.vue";
 import Supply from "../views/Supply.vue";
 import Gerenciamento from "../views/Gerenciamento.vue";
+import SupplyDetail from "../views/SupplyDetail.vue";
 
 const routes = [
   { path: "/", name: "home", component: DriverHome,  meta: { requiresAuth: true, requiresAuthRoutine: true }, },
@@ -11,6 +12,7 @@ const routes = [
   // Rota opcional com id (edição futura)
   { path: "/cadastrar/:id", name: "supply-edit", component: Supply, meta: { requiresAuth: true, requiresAuthRoutine: true } },
   { path: "/gerenciamento", name: "gerenciamento", component: Gerenciamento, meta: { requiresAuth: true, requiresAuthRoutine: true } },
+  { path: "/gerenciamento/:id", name: "supply-detail", component: SupplyDetail, props: true },
 ];
 
 const router = createRouter({
