@@ -7,6 +7,7 @@ import OnRouteSection from '../components/OnRouteSection.vue'
 import api from '../services/api'
 import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
 import { compressImage, validateFileSize, formatFileSize } from '../utils/fileUtils'
+import { useSideMenu } from '../composables/useSideMenu'
 
 const fuelRef = ref(null)
 const vehicleRef = ref(null)
@@ -15,6 +16,14 @@ const router = useRouter()
 const driverId = ref(null)
 // Controle externo para habilitar/desabilitar a seção "Em Rota"
 const emRotaEnabled = ref(false)
+// Anexos gerais (fora da seção Em Rota)
+const extraAttachments = ref([])
+const extraAttachInput = ref(null)
+function triggerExtraAttach() { extraAttachInput.value?.click() }
+function onExtraAttachChange(e) { extraAttachments.value = Array.from(e.target.files || []) }
+
+// Side menu
+const { toggle: toggleMenu } = useSideMenu()
 
 onMounted(async () => {
   // Carregar informações do usuário e obter o ID do motorista
@@ -74,7 +83,7 @@ async function submitSupply() {
 
     console.log('Payload', payload)
     console.log('Driver ID atual:', driverId.value, 'getCurrentDriverId():', getCurrentDriverId())
-    
+
     if (!payload.liters || !payload.pricePerLiter || !payload.plate) {
       message.value = 'Preencha litros, preço do litro e placa.'
       return
@@ -85,69 +94,64 @@ async function submitSupply() {
     const { data: supplyResponse } = await api.post('/supplies', payload, {
       headers: { 'Content-Type': 'application/json' }
     })
-    
+
     console.log('Supply criado:', supplyResponse)
     const supplyId = supplyResponse.id
-    
+
     // 2. Enviar arquivos se houver algum
-    const hasFiles = f.pumpPhotoFile || v.odoPhoto || (Array.isArray(r.attachments) && r.attachments.length > 0)
-    
+    const hasFiles = f.pumpPhotoFile || v.odoPhoto || (extraAttachments.value.length > 0)
+
     if (hasFiles) {
       console.log('Enviando arquivos para supply ID:', supplyId)
       const filesForm = new FormData()
-      
+
       // Comprimir e validar arquivos antes do envio
       if (f.pumpPhotoFile) {
         console.log(`pumpPhoto original: ${formatFileSize(f.pumpPhotoFile.size)}`)
         const compressedPump = await compressImage(f.pumpPhotoFile, 1280, 720, 0.7, 1024)
         console.log(`pumpPhoto comprimida: ${formatFileSize(compressedPump.size)}`)
-        
+
         if (!validateFileSize(compressedPump, 1024)) { // 1MB limite
           throw new Error(`Foto da bomba muito grande: ${formatFileSize(compressedPump.size)}. Máximo: 1MB`)
         }
-        
+
         filesForm.append('pumpPhoto', compressedPump)
       }
-      
+
       if (v.odoPhoto) {
         console.log(`odometerPhoto original: ${formatFileSize(v.odoPhoto.size)}`)
         const compressedOdo = await compressImage(v.odoPhoto, 1280, 720, 0.7, 1024)
         console.log(`odometerPhoto comprimida: ${formatFileSize(compressedOdo.size)}`)
-        
+
         if (!validateFileSize(compressedOdo, 1024)) {
           throw new Error(`Foto do hodômetro muito grande: ${formatFileSize(compressedOdo.size)}. Máximo: 1MB`)
         }
-        
+
         filesForm.append('odometerPhoto', compressedOdo)
       }
-      
-      if (Array.isArray(r.attachments)) {
-        for (let i = 0; i < r.attachments.length; i++) {
-          const file = r.attachments[i]
-          if (file) {
-            console.log(`attachment ${i} original: ${formatFileSize(file.size)}`)
-            
-            let processedFile = file
-            // Comprimir se for imagem
-            if (file.type.startsWith('image/')) {
-              processedFile = await compressImage(file, 1280, 720, 0.7, 1024)
-              console.log(`attachment ${i} comprimido: ${formatFileSize(processedFile.size)}`)
-            }
-            
-            if (!validateFileSize(processedFile, 1024)) {
-              throw new Error(`Anexo "${file.name}" muito grande: ${formatFileSize(processedFile.size)}. Máximo: 1MB`)
-            }
-            
-            filesForm.append('attachments', processedFile)
+
+      if (extraAttachments.value.length) {
+        for (let i = 0; i < extraAttachments.value.length; i++) {
+          const file = extraAttachments.value[i]
+          if (!file) continue
+          console.log(`extra attachment ${i} original: ${formatFileSize(file.size)}`)
+          let processedFile = file
+          if (file.type.startsWith('image/')) {
+            processedFile = await compressImage(file, 1280, 720, 0.7, 1024)
+            console.log(`extra attachment ${i} comprimido: ${formatFileSize(processedFile.size)}`)
           }
+          if (!validateFileSize(processedFile, 1024)) {
+            throw new Error(`Anexo "${file.name}" muito grande: ${formatFileSize(processedFile.size)}. Máximo: 1MB`)
+          }
+          filesForm.append('attachments', processedFile)
         }
       }
-      
+
       // Upload dos arquivos comprimidos
       await api.post(`/supplies/${supplyId}/files`, filesForm)
       console.log('Arquivos enviados com sucesso!')
     }
-    
+
     message.value = 'Abastecimento cadastrado com sucesso.'
     // Redirecionar para Home já atualizada
     router.push({ name: 'home', query: { r: Date.now() } })
@@ -163,7 +167,7 @@ async function submitSupply() {
 <template>
   <div class="page">
     <header class="app-bar">
-      <button class="menu-btn" aria-label="menu">☰</button>
+  <button class="menu-btn" aria-label="menu" @click="toggleMenu">☰</button>
       <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
       <div class="actions">
         <span class="badge">3</span>
@@ -192,13 +196,22 @@ async function submitSupply() {
         </div>
         <OnRouteSection ref="routeRef" :enabled="emRotaEnabled" />
       </section>
+      <section class="card attachments-card">
+        <h2 class="card-title">Outros anexos</h2>
+        <div class="attachments-field">
+          <input ref="extraAttachInput" type="file" multiple @change="onExtraAttachChange" style="display:none" />
+          <button type="button" class="upload" aria-label="upload" @click="triggerExtraAttach">⬆</button>
+          <small v-if="extraAttachments.length" class="hint">{{ extraAttachments.length }} arquivo(s)
+            selecionado(s)</small>
+        </div>
+      </section>
       <p v-if="message" class="feedback">{{ message }}</p>
       <div class="bottom-spacer" />
     </main>
 
     <footer class="action-bar">
       <button class="primary" :disabled="loading" @click="submitSupply">{{ loading ? 'Enviando...' : 'Enviar'
-        }}</button>
+      }}</button>
     </footer>
   </div>
 
@@ -352,5 +365,25 @@ async function submitSupply() {
   padding: 8px 10px;
   border-radius: 8px;
   font-size: 14px;
+}
+
+.attachments-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attachments-field .upload {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #0b5d3b;
+  color: #fff;
+  border: none;
+}
+
+.attachments-field .hint {
+  color: #6b7280;
+  font-size: 11px;
 }
 </style>

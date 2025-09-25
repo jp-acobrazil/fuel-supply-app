@@ -4,6 +4,7 @@ import HomeWidgets from '../components/HomeWidgets.vue'
 import RecentList from '../components/RecentList.vue'
 import FabActions from '../components/FabActions.vue'
 import api from '../services/api'
+import { useSideMenu } from '../composables/useSideMenu'
 
 const abastecimentosHeaders = ['ID', 'Placa', 'Data', 'Valor', 'Status']
 const abastecimentosRows = ref([])
@@ -53,12 +54,14 @@ async function loadAbastecimentos() {
 }
 
 onMounted(loadAbastecimentos)
+
+const { toggle } = useSideMenu()
 </script>
 
 <template>
   <div class="page">
     <header class="app-bar">
-      <button class="menu-btn" aria-label="menu">☰</button>
+  <button class="menu-btn" aria-label="menu" @click="toggle">☰</button>
       <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
       <div class="actions">
         <span class="badge">3</span>
@@ -72,7 +75,7 @@ onMounted(loadAbastecimentos)
 
       <section class="card">
         <h2 class="card-title">Ult. Abastecimentos</h2>
-  <RecentList :headers="abastecimentosHeaders" :rows="abastecimentosRows" title="Ult. Abastecimentos" />
+        <RecentList :headers="abastecimentosHeaders" :rows="abastecimentosRows" title="Ult. Abastecimentos" />
       </section>
 
       <section class="card">
@@ -167,7 +170,9 @@ onMounted(loadAbastecimentos)
   font-size: 18px;
 }
 
-.fab-spacer { height: 96px; }
+.fab-spacer {
+  height: 96px;
+}
 
 /* Footer de ações substituído por FABs */
 </style>

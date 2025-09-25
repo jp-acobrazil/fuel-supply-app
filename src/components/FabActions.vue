@@ -1,18 +1,8 @@
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
 const emit = defineEmits(['newChecklist', 'newAbastecimento', 'chat'])
 const router = useRouter()
-
-// Referência reativa para o ID do motorista
-const driverId = ref(null)
-
-// Carregar informações do usuário ao montar o componente
-onMounted(async () => {
-    await fetchCurrentUser()
-    driverId.value = getCurrentDriverId()
-})
 
 const expanded = ref(false)
 function toggleExpand() {
@@ -20,7 +10,7 @@ function toggleExpand() {
 }
 function goToSupply() {
     expanded.value = false
-    router.push({ name: 'supply', params: { id: driverId.value } })
+    router.push({ name: 'supply' })
 }
 </script>
 

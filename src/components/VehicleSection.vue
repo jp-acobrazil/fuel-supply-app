@@ -46,13 +46,9 @@ defineExpose({
 const fuelOptions = [
   'Gasolina comum',
   'Gasolina aditivada',
-  'Gasolina premium',
   'Etanol',
-  'Etanol aditivado',
-  'Diesel',
   'Diesel S10',
   'Diesel S500',
-  'Gás natural veicular'
 ]
 </script>
 

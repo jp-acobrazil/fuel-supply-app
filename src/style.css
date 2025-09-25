@@ -24,3 +24,5 @@ button { font-family: inherit; }
 #app { width: 100%; }
 
 /* Força tema claro: sem variação por prefers-color-scheme */
+
+.no-scroll { overflow: hidden !important; touch-action: none; }

@@ -2,10 +2,15 @@ import { createRouter, createWebHistory } from "vue-router";
 import axios from "axios";
 import DriverHome from "../views/DriverHome.vue";
 import Supply from "../views/Supply.vue";
+import Gerenciamento from "../views/Gerenciamento.vue";
 
 const routes = [
   { path: "/", name: "home", component: DriverHome,  meta: { requiresAuth: true, requiresAuthRoutine: true }, },
-  { path: "/cadastrar/:id", name: "supply", component: Supply, meta: { requiresAuth: true, requiresAuthRoutine: true } },
+  // Rota para criação (sem id)
+  { path: "/cadastrar", name: "supply", component: Supply, meta: { requiresAuth: true, requiresAuthRoutine: true } },
+  // Rota opcional com id (edição futura)
+  { path: "/cadastrar/:id", name: "supply-edit", component: Supply, meta: { requiresAuth: true, requiresAuthRoutine: true } },
+  { path: "/gerenciamento", name: "gerenciamento", component: Gerenciamento, meta: { requiresAuth: true, requiresAuthRoutine: true } },
 ];
 
 const router = createRouter({
