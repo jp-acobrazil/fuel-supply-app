@@ -13,6 +13,8 @@ const vehicleRef = ref(null)
 const routeRef = ref(null)
 const router = useRouter()
 const driverId = ref(null)
+// Controle externo para habilitar/desabilitar a seção "Em Rota"
+const emRotaEnabled = ref(false)
 
 onMounted(async () => {
   // Carregar informações do usuário e obter o ID do motorista
@@ -38,6 +40,21 @@ async function submitSupply() {
   try {
     loading.value = true
     message.value = ''
+
+    // Validações obrigatórias nas seções
+    const fuelValid = fuelRef.value?.validate?.()
+    const vehicleValid = vehicleRef.value?.validate?.()
+    if (!fuelValid || !vehicleValid) {
+      message.value = 'Preencha todos os campos obrigatórios marcados com *.'
+      // Próximo tick para garantir atualização de classes
+      requestAnimationFrame(() => {
+        const firstInvalid = document.querySelector('.field.invalid')
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      })
+      return
+    }
 
     const f = fuelRef.value?.getData?.() || {}
     const v = vehicleRef.value?.getData?.() || {}
@@ -167,8 +184,13 @@ async function submitSupply() {
       </section>
 
       <section class="card">
-        <h2 class="card-title">Em Rota</h2>
-        <OnRouteSection ref="routeRef" />
+        <div class="card-title route-wrapper">
+          <label class="route-checkbox">
+            <input type="checkbox" v-model="emRotaEnabled" aria-label="Ativar campos Em Rota" />
+          </label>
+          <h2 class="route-heading">Em Rota</h2>
+        </div>
+        <OnRouteSection ref="routeRef" :enabled="emRotaEnabled" />
       </section>
       <p v-if="message" class="feedback">{{ message }}</p>
       <div class="bottom-spacer" />
@@ -259,6 +281,36 @@ async function submitSupply() {
   text-align: center;
   margin: 4px 0 12px;
   font-size: 18px;
+}
+
+.route-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 4px 0 12px;
+}
+
+.route-heading {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.route-checkbox {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.route-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #0b5d3b;
+  cursor: pointer;
 }
 
 .bottom-spacer {

@@ -5,10 +5,32 @@ const plate = ref('')
 const fuel = ref('')
 const odometer = ref('')
 
+const plateError = ref('')
+const fuelError = ref('')
+const odoError = ref('')
+const photoError = ref('')
+
 const odoPhoto = ref(null)
 const odoInput = ref(null)
 function triggerOdoUpload() { odoInput.value?.click() }
-function onOdoChange(e) { odoPhoto.value = e.target.files?.[0] ?? null }
+function onOdoChange(e) { 
+  odoPhoto.value = e.target.files?.[0] ?? null 
+  if (odoPhoto.value) photoError.value = ''
+}
+
+function validate() {
+  plateError.value = ''
+  fuelError.value = ''
+  odoError.value = ''
+  photoError.value = ''
+
+  if (!plate.value.trim()) plateError.value = 'Obrigatório'
+  if (!fuel.value.trim()) fuelError.value = 'Obrigatório'
+  if (!odometer.value || Number(odometer.value) <= 0) odoError.value = 'Obrigatório'
+  if (!odoPhoto.value) photoError.value = 'Obrigatória'
+  return !(plateError.value || fuelError.value || odoError.value || photoError.value)
+}
+
 defineExpose({
   getData() {
     return {
@@ -17,31 +39,51 @@ defineExpose({
       odometer: Number(odometer.value) || 0,
       odoPhoto: odoPhoto.value || null,
     }
-  }
+  },
+  validate
 })
+
+const fuelOptions = [
+  'Gasolina comum',
+  'Gasolina aditivada',
+  'Gasolina premium',
+  'Etanol',
+  'Etanol aditivado',
+  'Diesel',
+  'Diesel S10',
+  'Diesel S500',
+  'Gás natural veicular'
+]
 </script>
 
 <template>
   <div class="grid">
-    <label class="field">
-      <span>Placa</span>
-      <input v-model="plate" placeholder="ABC-1234" autocapitalize="characters" @input="plate = plate.toUpperCase()" />
+    <label class="field" :class="{ invalid: plateError }">
+      <span>Placa do veículo *</span>
+      <input v-model="plate" placeholder="ABC-1234" autocapitalize="characters" @input="plate = plate.toUpperCase(); plateError = ''" />
+      <small v-if="plateError" class="err">{{ plateError }}</small>
     </label>
 
-    <label class="field">
-      <span>Tipo de combust.</span>
-      <input v-model="fuel" placeholder="Diesel, Gasolina..." autocapitalize="words" />
+    <label class="field" :class="{ invalid: fuelError }">
+      <span>Tipo de combust. *</span>
+      <select v-model="fuel" @change="fuelError = ''">
+        <option value="" disabled>Selecione</option>
+        <option v-for="opt in fuelOptions" :key="opt" :value="opt">{{ opt }}</option>
+      </select>
+      <small v-if="fuelError" class="err">{{ fuelError }}</small>
     </label>
-    <label class="field">
-      <span>Hodometro</span>
-      <input v-model="odometer" type="number" inputmode="numeric" placeholder="0" />
+    <label class="field" :class="{ invalid: odoError }">
+      <span>Hodometro *</span>
+      <input v-model="odometer" type="number" inputmode="numeric" placeholder="0" @input="odoError = ''" />
+      <small v-if="odoError" class="err">{{ odoError }}</small>
     </label>
 
-    <div class="field file">
-      <span>Foto do hodometro legível</span>
+    <div class="field file" :class="{ invalid: photoError }">
+      <span>Foto do hodometro legível *</span>
       <input ref="odoInput" type="file" accept="image/*" @change="onOdoChange" style="display:none" />
       <button type="button" class="upload" aria-label="upload" @click="triggerOdoUpload">⬆</button>
       <small v-if="odoPhoto" class="hint">{{ odoPhoto.name }}</small>
+      <small v-if="photoError" class="err">{{ photoError }}</small>
     </div>
   </div>
 </template>
@@ -77,6 +119,16 @@ input {
   font-size: 16px;
 }
 
+select {
+  height: 44px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: #333;
+  font-size: 16px;
+}
+
 .file {
   grid-column: 1 / -1;
   align-items: flex-start;
@@ -97,5 +149,9 @@ input {
   margin-top: 4px;
 }
 
-/* Tema fixo claro: sem variação por prefers-color-scheme */
+.err { color: #b91c1c; font-size: 11px; }
+.field.invalid input, .field.invalid .upload { border-color: #b91c1c; }
+.field.invalid span { color: #b91c1c; }
+
+/* Tema fixo claro */
 </style>

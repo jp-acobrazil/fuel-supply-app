@@ -1,5 +1,8 @@
 <script setup>
 import { ref } from 'vue'
+const props = defineProps({
+  enabled: { type: Boolean, default: true }
+})
 
 const cnpj = ref('')
 const station = ref('')
@@ -11,6 +14,9 @@ function triggerAttach() { attachInput.value?.click() }
 function onAttachChange(e) { attachments.value = Array.from(e.target.files || []) }
 defineExpose({
   getData() {
+    if (!props.enabled) {
+      return { stationCnpj: '', stationName: '', obs: '', attachments: [] }
+    }
     return {
       stationCnpj: cnpj.value,
       stationName: station.value,
@@ -22,27 +28,27 @@ defineExpose({
 </script>
 
 <template>
-  <div class="grid">
+  <div class="grid" :class="{ disabled: !props.enabled }">
     <label class="field">
       <span>CNPJ do posto</span>
-      <input v-model="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" />
+  <input v-model="cnpj" :disabled="!props.enabled" inputmode="numeric" placeholder="00.000.000/0000-00" />
     </label>
     <label class="field">
       <span>Nome do posto</span>
-      <input v-model="station" placeholder="Posto XYZ" />
+  <input v-model="station" :disabled="!props.enabled" placeholder="Posto XYZ" />
     </label>
 
     
     <label class="field">
       <span>Observações</span>
-      <textarea v-model="notes" placeholder="Digite aqui..." rows="4" />
+  <textarea v-model="notes" :disabled="!props.enabled" placeholder="Digite aqui..." rows="4" />
     </label>
 
     <div class="field file">
       <span>Outros anexos</span>
       <input ref="attachInput" type="file" multiple @change="onAttachChange" style="display:none" />
-      <button type="button" class="upload" aria-label="upload" @click="triggerAttach">⬆</button>
-      <small v-if="attachments.length" class="hint">{{ attachments.length }} arquivo(s) selecionado(s)</small>
+      <button type="button" class="upload" aria-label="upload" @click="triggerAttach" :disabled="!props.enabled">⬆</button>
+      <small v-if="attachments.length && props.enabled" class="hint">{{ attachments.length }} arquivo(s) selecionado(s)</small>
     </div>
   </div>
 </template>
@@ -53,6 +59,7 @@ defineExpose({
   grid-template-columns: 1fr; /* mobile-first */
   gap: 12px;
 }
+ .grid.disabled { opacity: .5; pointer-events: none; }
 @media (min-width: 480px) {
   .grid { grid-template-columns: 1fr 1fr; }
 }

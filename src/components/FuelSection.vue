@@ -5,10 +5,17 @@ const liters = ref('')
 const price = ref('')
 const total = ref('')
 
+const litersError = ref('')
+const priceError = ref('')
+const pumpError = ref('')
+
 const pumpPhotoFile = ref(null)
 const pumpFileInput = ref(null)
 function triggerPumpUpload() { pumpFileInput.value?.click() }
-function onPumpFileChange(e) { pumpPhotoFile.value = e.target.files?.[0] ?? null }
+function onPumpFileChange(e) { 
+  pumpPhotoFile.value = e.target.files?.[0] ?? null 
+  if (pumpPhotoFile.value) pumpError.value = ''
+}
 
 watch([liters, price], ([l, p]) => {
   const lv = Number(l)
@@ -19,6 +26,24 @@ watch([liters, price], ([l, p]) => {
     total.value = ''
   }
 })
+
+function validate() {
+  litersError.value = ''
+  priceError.value = ''
+  pumpError.value = ''
+
+  if (!liters.value || Number(liters.value) <= 0) {
+    litersError.value = 'Obrigatório'
+  }
+  if (!price.value || Number(price.value) <= 0) {
+    priceError.value = 'Obrigatório'
+  }
+  if (!pumpPhotoFile.value) {
+    pumpError.value = 'Obrigatória'
+  }
+  return !(litersError.value || priceError.value || pumpError.value)
+}
+
 defineExpose({
   getData() {
     return {
@@ -27,19 +52,22 @@ defineExpose({
       total: Number(total.value) || 0,
       pumpPhotoFile: pumpPhotoFile.value || null,
     }
-  }
+  },
+  validate
 })
 </script>
 
 <template>
   <div class="grid">
-    <label class="field">
-      <span>Qtd em litros</span>
-  <input type="number" name="fuelLiters" inputmode="decimal" min="0" step="0.001" v-model="liters" placeholder="0" />
+    <label class="field" :class="{ invalid: litersError }">
+      <span>Qtd em litros *</span>
+      <input type="number" name="fuelLiters" inputmode="decimal" min="0" step="0.001" v-model="liters" placeholder="0" @input="litersError = ''" />
+      <small v-if="litersError" class="err">{{ litersError }}</small>
     </label>
-    <label class="field">
-      <span>Preço do litro</span>
-  <input type="number" name="fuelPrice" inputmode="decimal" min="0" step="0.01" v-model="price" placeholder="0,00" />
+    <label class="field" :class="{ invalid: priceError }">
+      <span>Preço do litro *</span>
+      <input type="number" name="fuelPrice" inputmode="decimal" min="0" step="0.01" v-model="price" placeholder="0,00" @input="priceError = ''" />
+      <small v-if="priceError" class="err">{{ priceError }}</small>
     </label>
 
     <label class="field">
@@ -47,11 +75,12 @@ defineExpose({
       <input type="text" name="fuelTotal" :value="total" disabled readonly aria-readonly="true" />
     </label>
   </div>
-  <div class="field file">
-    <span>Foto bomba de comb.</span>
+  <div class="field file" :class="{ invalid: pumpError }">
+    <span>Foto bomba de comb. *</span>
     <input ref="pumpFileInput" type="file" accept="image/*" @change="onPumpFileChange" style="display:none" />
     <button type="button" class="upload" aria-label="upload" @click="triggerPumpUpload">⬆</button>
     <small v-if="pumpPhotoFile" class="hint">{{ pumpPhotoFile.name }}</small>
+    <small v-if="pumpError" class="err">{{ pumpError }}</small>
   </div>
 </template>
 
@@ -107,5 +136,9 @@ input {
   border: none;
 }
 
-/* Tema fixo claro: sem variação por prefers-color-scheme */
+.err { color: #b91c1c; font-size: 11px; }
+.field.invalid input, .field.invalid .upload { border-color: #b91c1c; }
+.field.invalid span { color: #b91c1c; }
+
+/* Tema fixo claro */
 </style>
