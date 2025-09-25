@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
 import { useSideMenu } from '../composables/useSideMenu'
 import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
+import { statusClass } from '../utils/status'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,13 +19,10 @@ const viewing = ref(null) // { name, url, type }
 const showViewer = ref(false)
 const statusLoading = ref(false)
 const statusMessage = ref('')
-function statusClass(code) {
-    const c = (code || '').toUpperCase()
-    if (c === 'A' || c === 'APPROVED') return 'green'
-    if (c === 'R' || c === 'REJECTED') return 'red'
-    if (c === 'C' || c === 'CREATED' || c === 'PENDING') return 'orange'
-    return 'gray'
-}
+// Comentário de aprovação/reprovação (limite 100 chars)
+const approvalComment = ref('')
+const maxComment = 100
+const remainingChars = computed(() => maxComment - approvalComment.value.length)
 
 function formatCurrency(v) {
     const n = Number(v)
@@ -44,6 +42,10 @@ async function load() {
         await fetchCurrentUser()
         const { data } = await api.get(`/supplies/${id.value}`)
         supply.value = data
+        // Preencher comentário se já existir (caso supply já validado)
+        if (data && data.approvalComment) {
+            approvalComment.value = data.approvalComment
+        }
         // Buscar lista de arquivos
         try {
             const { data: arr } = await api.get(`/supplies/${id.value}/files`)
@@ -103,9 +105,20 @@ async function updateStatus(newStatus) {
     try {
         const approverId = getCurrentDriverId()
         if (!approverId) throw new Error('Usuário não carregado.')
-        const payload = { approverId, status: newStatus }
+        // Validação de comentário: obrigatório se rejeitar
+        if (newStatus === 'REJECTED' && !approvalComment.value.trim()) {
+            statusLoading.value = false
+            statusMessage.value = 'Comentário é obrigatório ao rejeitar.'
+            return
+        }
+        // Garantir limite de 100 caracteres
+        if (approvalComment.value.length > maxComment) {
+            approvalComment.value = approvalComment.value.slice(0, maxComment)
+        }
+        const payload = { approverId, status: newStatus, comment: approvalComment.value.trim() }
         const { data } = await api.patch(`/supplies/${supply.value.id}/status`, payload, { headers: { 'Content-Type': 'application/json' } })
         supply.value = data
+        if (data && data.approvalComment) approvalComment.value = data.approvalComment
         statusMessage.value = newStatus === 'APPROVED' ? 'Abastecimento aprovado.' : 'Abastecimento rejeitado.'
     } catch (e) {
         console.error('Falha ao atualizar status', e)
@@ -183,6 +196,18 @@ async function updateStatus(newStatus) {
                         </div>
                     </div>
                     <div class="status-bar">
+                        <div class="validation-comment" v-if="supply && (supply.status === 'C' || supply.status === 'CREATED' || supply.status === 'PENDING')">
+                            <label for="approvalComment">Comentário (opcional ao aprovar / obrigatório ao rejeitar)</label>
+                            <textarea id="approvalComment" v-model="approvalComment" :maxlength="maxComment" :disabled="statusLoading"
+                                rows="3" placeholder="Descreva problemas ou observações (máx 100 caracteres)"></textarea>
+                            <div class="comment-meta">
+                                <span :class="{ limit: remainingChars <= 10 }">{{ remainingChars }} restantes</span>
+                            </div>
+                        </div>
+                        <div class="validation-comment readonly" v-else-if="approvalComment">
+                            <label>Comentário do avaliador</label>
+                            <div class="comment-readonly">{{ approvalComment }}</div>
+                        </div>
                         <div class="status-info">
                             <span v-if="statusLoading" class="loading-inline">Enviando...</span>
                             <span v-else-if="statusMessage" class="msg">{{ statusMessage }}</span>
@@ -444,6 +469,53 @@ async function updateStatus(newStatus) {
     flex-direction: column;
     gap: 12px;
     margin-top: 4px;
+}
+
+.validation-comment {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.validation-comment label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #374151;
+    font-weight: 600;
+}
+
+.validation-comment textarea {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    background: #fff;
+    resize: vertical;
+    line-height: 1.35;
+}
+
+.validation-comment textarea:disabled {
+    background: #f3f4f6;
+}
+
+.comment-meta {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.comment-meta .limit { color: #b91c1c; font-weight: 600; }
+
+.validation-comment.readonly .comment-readonly {
+    background: #f8f9fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    line-height: 1.4;
 }
 
 .status-info {

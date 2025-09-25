@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import FuelSection from '../components/FuelSection.vue'
 import VehicleSection from '../components/VehicleSection.vue'
 import OnRouteSection from '../components/OnRouteSection.vue'
@@ -14,6 +14,10 @@ const vehicleRef = ref(null)
 const routeRef = ref(null)
 const router = useRouter()
 const driverId = ref(null)
+const route = useRoute()
+const editingId = ref(route.params.id || null)
+const approvalComment = ref('')
+const originalStatus = ref('')
 // Controle externo para habilitar/desabilitar a seção "Em Rota"
 const emRotaEnabled = ref(false)
 // Anexos gerais (fora da seção Em Rota)
@@ -26,10 +30,28 @@ function onExtraAttachChange(e) { extraAttachments.value = Array.from(e.target.f
 const { toggle: toggleMenu } = useSideMenu()
 
 onMounted(async () => {
-  // Carregar informações do usuário e obter o ID do motorista
   await fetchCurrentUser()
   driverId.value = getCurrentDriverId()
-  console.log('ID do motorista:', driverId.value)
+  if (editingId.value) {
+    // Carregar dados existentes para edição de rejeitado
+    try {
+      const { data } = await api.get(`/supplies/${editingId.value}`)
+      // Pré-preencher seções
+      if (fuelRef.value && data) {
+        fuelRef.value.setData?.({ liters: data.liters, pricePerLiter: data.pricePerLiter, fuelType: data.fuelType })
+      }
+      if (vehicleRef.value && data) {
+        vehicleRef.value.setData?.({ plate: data.vehicle?.plate || data.plate, odometer: data.odometer, fuelType: data.fuelType })
+      }
+      if (routeRef.value && data) {
+        const hasRoute = data.stationCnpj || data.stationName || data.obs
+        emRotaEnabled.value = !!hasRoute
+        routeRef.value.setData?.({ stationCnpj: data.stationCnpj, stationName: data.stationName, obs: data.obs })
+      }
+      approvalComment.value = data.approvalComment || ''
+      originalStatus.value = data.status || ''
+    } catch (e) { console.error('Falha ao carregar supply para edição', e) }
+  }
 })
 
 const loading = ref(false)
@@ -50,9 +72,10 @@ async function submitSupply() {
     loading.value = true
     message.value = ''
 
-    // Validações obrigatórias nas seções
-    const fuelValid = fuelRef.value?.validate?.()
-    const vehicleValid = vehicleRef.value?.validate?.()
+  // Validações obrigatórias nas seções
+  const inEdit = !!editingId.value
+  const fuelValid = fuelRef.value?.validate?.({ allowMissingPhotos: inEdit })
+  const vehicleValid = vehicleRef.value?.validate?.({ allowMissingPhotos: inEdit })
     if (!fuelValid || !vehicleValid) {
       message.value = 'Preencha todos os campos obrigatórios marcados com *.'
       // Próximo tick para garantir atualização de classes
@@ -89,14 +112,21 @@ async function submitSupply() {
       return
     }
 
-    // 1. Criar o supply com JSON
-    console.log('Enviando payload JSON:', payload)
-    const { data: supplyResponse } = await api.post('/supplies', payload, {
-      headers: { 'Content-Type': 'application/json' }
-    })
-
-    console.log('Supply criado:', supplyResponse)
-    const supplyId = supplyResponse.id
+    let supplyId = editingId.value
+    if (editingId.value) {
+      // PUT atualização
+      console.log('Atualizando supply ID', editingId.value, 'payload:', payload)
+      const { data: updated } = await api.put(`/supplies/${editingId.value}`, payload, { headers: { 'Content-Type': 'application/json' } })
+      supplyId = updated.id
+      message.value = 'Abastecimento atualizado com sucesso.'
+    } else {
+      console.log('Enviando payload JSON:', payload)
+      const { data: supplyResponse } = await api.post('/supplies', payload, {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      supplyId = supplyResponse.id
+      console.log('Supply criado:', supplyId)
+    }
 
     // 2. Enviar arquivos se houver algum
     const hasFiles = f.pumpPhotoFile || v.odoPhoto || (extraAttachments.value.length > 0)
@@ -152,7 +182,9 @@ async function submitSupply() {
       console.log('Arquivos enviados com sucesso!')
     }
 
-    message.value = 'Abastecimento cadastrado com sucesso.'
+    if (!editingId.value) {
+      message.value = 'Abastecimento cadastrado com sucesso.'
+    }
     // Redirecionar para Home já atualizada
     router.push({ name: 'home', query: { r: Date.now() } })
   } catch (err) {
@@ -176,6 +208,10 @@ async function submitSupply() {
 
     <main class="content">
       <h1 class="title">Abastecimento</h1>
+      <div v-if="editingId && originalStatus === 'R' && approvalComment" class="rejection-box">
+        <strong>Motivo da reprovação:</strong>
+        <p>{{ approvalComment }}</p>
+      </div>
 
       <section class="card">
         <h2 class="card-title">Combustível</h2>
@@ -366,6 +402,17 @@ async function submitSupply() {
   border-radius: 8px;
   font-size: 14px;
 }
+
+.rejection-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin: -4px 0 14px;
+}
+.rejection-box p { margin: 4px 0 0; white-space: pre-wrap; }
 
 .attachments-field {
   display: flex;

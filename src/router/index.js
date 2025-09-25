@@ -4,6 +4,7 @@ import DriverHome from "../views/DriverHome.vue";
 import Supply from "../views/Supply.vue";
 import Gerenciamento from "../views/Gerenciamento.vue";
 import SupplyDetail from "../views/SupplyDetail.vue";
+import SupplyDriverView from "../views/SupplyDriverView.vue";
 
 const routes = [
   { path: "/", name: "home", component: DriverHome,  meta: { requiresAuth: true, requiresAuthRoutine: true }, },
@@ -13,6 +14,7 @@ const routes = [
   { path: "/cadastrar/:id", name: "supply-edit", component: Supply, meta: { requiresAuth: true, requiresAuthRoutine: true } },
   { path: "/gerenciamento", name: "gerenciamento", component: Gerenciamento, meta: { requiresAuth: true, requiresAuthRoutine: true } },
   { path: "/gerenciamento/:id", name: "supply-detail", component: SupplyDetail, props: true },
+  { path: "/abastecimentos/:id", name: "supply-driver-view", component: SupplyDriverView, meta: { requiresAuth: true, requiresAuthRoutine: true } },
 ];
 
 const router = createRouter({

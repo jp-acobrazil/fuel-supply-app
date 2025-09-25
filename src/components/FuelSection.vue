@@ -27,7 +27,8 @@ watch([liters, price], ([l, p]) => {
   }
 })
 
-function validate() {
+function validate(opts = {}) {
+  const allowMissing = !!opts.allowMissingPhotos
   litersError.value = ''
   priceError.value = ''
   pumpError.value = ''
@@ -38,7 +39,7 @@ function validate() {
   if (!price.value || Number(price.value) <= 0) {
     priceError.value = 'Obrigatório'
   }
-  if (!pumpPhotoFile.value) {
+  if (!pumpPhotoFile.value && !allowMissing) {
     pumpError.value = 'Obrigatória'
   }
   return !(litersError.value || priceError.value || pumpError.value)
@@ -52,6 +53,11 @@ defineExpose({
       total: Number(total.value) || 0,
       pumpPhotoFile: pumpPhotoFile.value || null,
     }
+  },
+  setData(data = {}) {
+    if ('liters' in data) liters.value = data.liters ?? ''
+    if ('pricePerLiter' in data) price.value = data.pricePerLiter ?? ''
+    if ('fuelType' in data) {/* ignorado aqui, tratado em Vehicle */}
   },
   validate
 })

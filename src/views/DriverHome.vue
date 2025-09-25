@@ -4,6 +4,7 @@ import HomeWidgets from '../components/HomeWidgets.vue'
 import RecentList from '../components/RecentList.vue'
 import FabActions from '../components/FabActions.vue'
 import api from '../services/api'
+import { statusClass } from '../utils/status'
 import { useSideMenu } from '../composables/useSideMenu'
 
 const abastecimentosHeaders = ['ID', 'Placa', 'Data', 'Valor', 'Status']
@@ -37,14 +38,16 @@ async function loadAbastecimentos() {
     // ordenar desc por data
     items.sort((a, b) => new Date(b.date) - new Date(a.date))
     const last5 = items.slice(0, 5)
-    abastecimentosRows.value = last5.map((s, idx) => {
+    abastecimentosRows.value = last5.map((s) => {
       const valor = (Number(s.liters) || 0) * (Number(s.pricePerLiter) || 0)
       return {
-        id: padId(s.id),
+        id: padId(s.id), // exibido
+        rawId: s.id, // usado para rota
         placa: s?.vehicle?.plate || '-',
         data: formatDate(s.date),
         valor: formatCurrency(valor),
-        statusColor: idx % 2 === 0 ? 'green' : 'orange', // mock
+        statusColor: statusClass(s.status),
+        status: s.status,
       }
     })
   } catch (e) {

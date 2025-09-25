@@ -1,9 +1,17 @@
 <script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 const props = defineProps({
     title: { type: String, required: true },
     headers: { type: Array, default: () => [] },
     rows: { type: Array, default: () => [] }
 })
+const router = useRouter()
+const openId = ref(null)
+function toggle(r){ openId.value = openId.value === r.id ? null : r.id }
+function resolveId(r){ return r.rawId != null ? r.rawId : (typeof r.id === 'string' ? r.id.replace(/[^0-9]/g,'') : r.id) }
+function viewSupply(r){ router.push({ name: 'supply-driver-view', params: { id: resolveId(r) } }) }
+function respondSupply(r){ router.push({ name: 'supply-edit', params: { id: resolveId(r) } }) }
 </script>
 
 <template>
@@ -15,13 +23,20 @@ const props = defineProps({
             <div class="tbody">
                 <div v-for="(r, i) in props.rows" :key="i" class="tr">
                     <div class="td id">
-                        <a href="#" class="link">{{ r.id }}</a>
+                        <a href="#" class="link" @click.prevent="viewSupply(r)">{{ r.id }}</a>
                     </div>
                     <div class="td">{{ r.placa }}</div>
                     <div class="td">{{ r.data }}</div>
                     <div class="td" v-if="r.valor !== undefined">{{ r.valor }}</div>
                     <div class="td status">
                         <span class="dot" :class="r.statusColor" />
+                    </div>
+                    <div class="td actions">
+                        <button class="btn-more" @click="toggle(r)" aria-label="ações">⋮</button>
+                        <div v-if="openId === r.id" class="menu">
+                            <button @click="viewSupply(r)">Visualizar</button>
+                            <button v-if="r.status === 'R'" @click="respondSupply(r)">Responder</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -51,7 +66,7 @@ const props = defineProps({
 .thead,
 .tr {
     display: grid;
-    grid-template-columns: 1.1fr 1fr 1fr .9fr .6fr;
+    grid-template-columns: 1.1fr 1fr 1fr .9fr .6fr .4fr;
     align-items: center;
     column-gap: 8px;
 }
@@ -103,11 +118,25 @@ const props = defineProps({
     background: #f59e0b;
 }
 
+.dot.red {
+    background: #dc2626;
+}
+
+.dot.gray {
+    background: #9ca3af;
+}
+
 @media (max-width: 380px) {
 
     .thead,
     .tr {
-        grid-template-columns: 1fr .9fr .9fr .8fr .4fr;
+        grid-template-columns: 1fr .9fr .9fr .8fr .4fr .4fr;
     }
 }
+
+.td.actions { position: relative; display:flex; justify-content:center; }
+.btn-more { background:transparent; border:none; cursor:pointer; font-size:18px; line-height:1; padding:4px; }
+.menu { position:absolute; top:100%; right:0; background:#fff; border:1px solid #e5e7eb; box-shadow:0 4px 12px rgba(0,0,0,.12); border-radius:6px; padding:6px; display:flex; flex-direction:column; gap:4px; z-index:20; }
+.menu button { background:#fff; border:none; padding:4px 8px; font-size:12px; text-align:left; cursor:pointer; border-radius:4px; }
+.menu button:hover { background:#f3f4f6; }
 </style>

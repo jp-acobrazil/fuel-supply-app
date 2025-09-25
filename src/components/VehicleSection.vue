@@ -18,7 +18,8 @@ function onOdoChange(e) {
   if (odoPhoto.value) photoError.value = ''
 }
 
-function validate() {
+function validate(opts = {}) {
+  const allowMissing = !!opts.allowMissingPhotos
   plateError.value = ''
   fuelError.value = ''
   odoError.value = ''
@@ -27,7 +28,7 @@ function validate() {
   if (!plate.value.trim()) plateError.value = 'Obrigatório'
   if (!fuel.value.trim()) fuelError.value = 'Obrigatório'
   if (!odometer.value || Number(odometer.value) <= 0) odoError.value = 'Obrigatório'
-  if (!odoPhoto.value) photoError.value = 'Obrigatória'
+  if (!odoPhoto.value && !allowMissing) photoError.value = 'Obrigatória'
   return !(plateError.value || fuelError.value || odoError.value || photoError.value)
 }
 
@@ -39,6 +40,11 @@ defineExpose({
       odometer: Number(odometer.value) || 0,
       odoPhoto: odoPhoto.value || null,
     }
+  },
+  setData(data = {}) {
+    if ('plate' in data) plate.value = data.plate ?? ''
+    if ('fuelType' in data) fuel.value = data.fuelType ?? ''
+    if ('odometer' in data) odometer.value = data.odometer ?? ''
   },
   validate
 })

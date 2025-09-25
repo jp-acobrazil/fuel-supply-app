@@ -20,6 +20,9 @@ export async function fetchCurrentUser() {
     
   // Em produção, buscar do backend (endpoint user-details)
   const { data } = await api.get('https://api.acobrazil.com.br/authenticate/auth/user-details', { withCredentials: true })
+
+  console.log('Dados do usuário obtidos:', data)
+  
   // Mapear usuarioErp como id para compatibilidade
   currentUser.value = { ...data, id: data.usuarioErp }
   console.log('Usuário atual:', currentUser.value)

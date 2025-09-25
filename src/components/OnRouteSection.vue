@@ -18,6 +18,11 @@ defineExpose({
       stationName: station.value,
       obs: notes.value
     }
+  },
+  setData(data = {}) {
+    if ('stationCnpj' in data) cnpj.value = data.stationCnpj ?? ''
+    if ('stationName' in data) station.value = data.stationName ?? ''
+    if ('obs' in data) notes.value = data.obs ?? ''
   }
 })
 </script>
