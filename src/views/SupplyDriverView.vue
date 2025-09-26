@@ -73,7 +73,7 @@ function back() { router.push({ name: 'home' }) }
               <div class="field"><label>Hodômetro</label><input disabled :value="supply?.odometer" /></div>
             </div>
           </section>
-          <section class="block" v-if="supply?.stationCnpj || supply?.stationName || supply?.obs">
+          <section class="block">
             <h3>Em Rota</h3>
             <div class="grid">
               <div class="field"><label>CNPJ</label><input disabled :value="supply?.stationCnpj" /></div>

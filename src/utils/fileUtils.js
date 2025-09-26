@@ -69,6 +69,83 @@ export function compressImage(file, maxWidth = 1920, maxHeight = 1080, quality =
 }
 
 /**
+ * Comprime iterativamente uma imagem para atingir um tamanho alvo em KB.
+ * Reduz a qualidade gradualmente e, se necessário, reduz dimensões.
+ * Retorna a melhor tentativa (pode ficar acima do alvo se atingir limites mínimos).
+ *
+ * @param {File} file
+ * @param {object} opts
+ * @param {number} opts.targetKB - Tamanho alvo por arquivo (KB)
+ * @param {number} [opts.maxWidth=1280]
+ * @param {number} [opts.maxHeight=720]
+ * @param {number} [opts.initialQuality=0.7]
+ * @param {number} [opts.minQuality=0.4]
+ * @param {number} [opts.qualityStep=0.1]
+ * @param {number} [opts.minWidth=640]
+ * @param {number} [opts.minHeight=480]
+ * @returns {Promise<File>}
+ */
+export async function compressImageToTarget(file, opts = {}) {
+  const {
+    targetKB,
+    maxWidth = 1280,
+    maxHeight = 720,
+    initialQuality = 0.7,
+    minQuality = 0.4,
+    qualityStep = 0.1,
+    minWidth = 640,
+    minHeight = 480,
+  } = opts
+
+  if (!file?.type?.startsWith('image/')) return file
+  if (!targetKB || targetKB <= 0) return file
+
+  let best = file
+  let curWidth = maxWidth
+  let curHeight = maxHeight
+  let quality = initialQuality
+
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const compressed = await compressImage(best, curWidth, curHeight, quality, targetKB)
+    if (compressed.size < best.size) best = compressed
+
+    if (best.size <= targetKB * 1024) break
+
+    // Tenta reduzir qualidade
+    if (quality - qualityStep >= minQuality) {
+      quality = Math.max(minQuality, quality - qualityStep)
+      continue
+    }
+
+    // Reduz dimensões se possível
+    const nextWidth = Math.floor(curWidth * 0.9)
+    const nextHeight = Math.floor(curHeight * 0.9)
+    if (nextWidth >= minWidth && nextHeight >= minHeight) {
+      curWidth = nextWidth
+      curHeight = nextHeight
+      // Após reduzir dimensões, tente com qualidade inicial novamente
+      quality = initialQuality
+      continue
+    }
+
+    // Não dá para reduzir mais
+    break
+  }
+
+  return best
+}
+
+/**
+ * Valida o tamanho total (em KB) de uma lista de arquivos.
+ * @param {File[]} files
+ * @param {number} maxTotalKB
+ */
+export function validateTotalSize(files, maxTotalKB) {
+  const totalBytes = (files || []).reduce((acc, f) => acc + (f?.size || 0), 0)
+  return totalBytes <= maxTotalKB * 1024
+}
+
+/**
  * Valida se o arquivo está dentro dos limites de tamanho
  * @param {File} file - Arquivo a validar
  * @param {number} maxSizeKB - Tamanho máximo em KB

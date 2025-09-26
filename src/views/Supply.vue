@@ -6,7 +6,7 @@ import VehicleSection from '../components/VehicleSection.vue'
 import OnRouteSection from '../components/OnRouteSection.vue'
 import api from '../services/api'
 import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
-import { compressImage, validateFileSize, formatFileSize } from '../utils/fileUtils'
+import { compressImage, validateFileSize, formatFileSize, compressImageToTarget, validateTotalSize } from '../utils/fileUtils'
 import { useSideMenu } from '../composables/useSideMenu'
 
 const fuelRef = ref(null)
@@ -135,29 +135,24 @@ async function submitSupply() {
       console.log('Enviando arquivos para supply ID:', supplyId)
       const filesForm = new FormData()
 
+      // Objetivo: soma total <= 1MB (1024 KB)
+      const MAX_TOTAL_KB = 1024
+      const candidates = [] // manter arquivos processados antes de anexar
+
       // Comprimir e validar arquivos antes do envio
       if (f.pumpPhotoFile) {
         console.log(`pumpPhoto original: ${formatFileSize(f.pumpPhotoFile.size)}`)
-        const compressedPump = await compressImage(f.pumpPhotoFile, 1280, 720, 0.7, 1024)
+        // comprimir visando 512 KB de alvo inicial
+        let compressedPump = await compressImageToTarget(f.pumpPhotoFile, { targetKB: 512 })
         console.log(`pumpPhoto comprimida: ${formatFileSize(compressedPump.size)}`)
-
-        if (!validateFileSize(compressedPump, 1024)) { // 1MB limite
-          throw new Error(`Foto da bomba muito grande: ${formatFileSize(compressedPump.size)}. Máximo: 1MB`)
-        }
-
-        filesForm.append('pumpPhoto', compressedPump)
+        candidates.push({ key: 'pumpPhoto', file: compressedPump })
       }
 
       if (v.odoPhoto) {
         console.log(`odometerPhoto original: ${formatFileSize(v.odoPhoto.size)}`)
-        const compressedOdo = await compressImage(v.odoPhoto, 1280, 720, 0.7, 1024)
+        let compressedOdo = await compressImageToTarget(v.odoPhoto, { targetKB: 400 })
         console.log(`odometerPhoto comprimida: ${formatFileSize(compressedOdo.size)}`)
-
-        if (!validateFileSize(compressedOdo, 1024)) {
-          throw new Error(`Foto do hodômetro muito grande: ${formatFileSize(compressedOdo.size)}. Máximo: 1MB`)
-        }
-
-        filesForm.append('odometerPhoto', compressedOdo)
+        candidates.push({ key: 'odometerPhoto', file: compressedOdo })
       }
 
       if (extraAttachments.value.length) {
@@ -167,17 +162,51 @@ async function submitSupply() {
           console.log(`extra attachment ${i} original: ${formatFileSize(file.size)}`)
           let processedFile = file
           if (file.type.startsWith('image/')) {
-            processedFile = await compressImage(file, 1280, 720, 0.7, 1024)
+            // alvo mais agressivo, p.ex. 128-256 KB para extras
+            processedFile = await compressImageToTarget(file, { targetKB: 256 })
             console.log(`extra attachment ${i} comprimido: ${formatFileSize(processedFile.size)}`)
           }
-          if (!validateFileSize(processedFile, 1024)) {
-            throw new Error(`Anexo "${file.name}" muito grande: ${formatFileSize(processedFile.size)}. Máximo: 1MB`)
-          }
-          filesForm.append('attachments', processedFile)
+          candidates.push({ key: 'attachments', file: processedFile })
         }
       }
 
-      // Upload dos arquivos comprimidos
+      // 1) Checar total; se exceder, tentar re-comprimir em alvos menores
+      let totalOk = validateTotalSize(candidates.map(c => c.file), MAX_TOTAL_KB)
+      if (!totalOk) {
+        console.log('Total de anexos > 1MB; tentando re-compressão...')
+        // Estratégia de reassignment de alvo: diminuir para cada item
+        const descTargets = {
+          pumpPhoto: 400,
+          odometerPhoto: 300,
+          attachments: 200,
+        }
+        // Iterar e recomprimir até 2 tentativas
+        for (let round = 0; round < 2 && !totalOk; round++) {
+          for (let i = 0; i < candidates.length; i++) {
+            const c = candidates[i]
+            if (!c.file.type.startsWith('image/')) continue
+            const newTarget = Math.max(100, Math.floor((descTargets[c.key] || 200) * (round === 0 ? 1 : 0.75)))
+            const recompressed = await compressImageToTarget(c.file, { targetKB: newTarget })
+            if (recompressed.size < c.file.size) {
+              console.log(`${c.key} re-comprimido: ${formatFileSize(c.file.size)} -> ${formatFileSize(recompressed.size)}`)
+              c.file = recompressed
+            }
+          }
+          totalOk = validateTotalSize(candidates.map(c => c.file), MAX_TOTAL_KB)
+        }
+      }
+
+      if (!totalOk) {
+        const totalBytes = candidates.reduce((acc, c) => acc + c.file.size, 0)
+        throw new Error(`Soma dos anexos excede 1MB (${formatFileSize(totalBytes)}). Reduza a quantidade ou tamanho das imagens.`)
+      }
+
+      // 2) Anexar no FormData
+      for (const c of candidates) {
+        filesForm.append(c.key, c.file)
+      }
+
+      // 3) Upload dos arquivos comprimidos
       await api.post(`/supplies/${supplyId}/files`, filesForm)
       console.log('Arquivos enviados com sucesso!')
     }

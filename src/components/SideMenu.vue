@@ -1,6 +1,8 @@
 <script setup>
+import { onMounted } from 'vue'
 import { useSideMenu } from '../composables/useSideMenu'
 import { useRouter, useRoute } from 'vue-router'
+import { checkGerenciamentoAccess, hasGerenciamentoAccess, isCheckingPermission, fetchCurrentUser } from '../services/user'
 
 const { isOpen, close } = useSideMenu()
 const router = useRouter()
@@ -13,6 +15,12 @@ function go(path) {
 function isActive(path) {
   return route.path === path
 }
+
+onMounted(async () => {
+  // Garante usuário carregado e verifica permissão ao abrir o menu
+  await fetchCurrentUser()
+  await checkGerenciamentoAccess()
+})
 </script>
 
 <template>
@@ -32,7 +40,7 @@ function isActive(path) {
         <ul class="menu-list">
           <li class="group">Transporte</li>
           <li :class="{ active: isActive('/') }" @click="go('/')">Motorista</li>
-          <li :class="{ active: isActive('/gerenciamento') }" @click="go('/gerenciamento')">Gerenciamento</li>
+          <li v-if="hasGerenciamentoAccess" :class="{ active: isActive('/gerenciamento') }" @click="go('/gerenciamento')">Gerenciamento</li>
           <li :class="{ active: isActive('/cadastrar') }" @click="go('/cadastrar')">Abastecimento</li>
         </ul>
         <div class="footer-links">

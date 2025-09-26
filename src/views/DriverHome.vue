@@ -6,6 +6,9 @@ import FabActions from '../components/FabActions.vue'
 import api from '../services/api'
 import { statusClass } from '../utils/status'
 import { useSideMenu } from '../composables/useSideMenu'
+import { fetchCurrentUser, getCurrentDriverId } from '../services/user'
+
+const driverId = ref(null)
 
 const abastecimentosHeaders = ['ID', 'Placa', 'Data', 'Valor', 'Status']
 const abastecimentosRows = ref([])
@@ -33,7 +36,10 @@ function formatCurrency(v) {
 
 async function loadAbastecimentos() {
   try {
-    const { data } = await api.get('/supplies')
+    await fetchCurrentUser()
+    driverId.value = getCurrentDriverId()
+    console.log('Driver ID:', driverId.value)
+    const { data } = await api.get(`/supplies/driver/${driverId.value}`)
     const items = Array.isArray(data) ? data : []
     // ordenar desc por data
     items.sort((a, b) => new Date(b.date) - new Date(a.date))
