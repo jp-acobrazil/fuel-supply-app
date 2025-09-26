@@ -101,10 +101,15 @@ onUnmounted(() => {
   <div class="page">
     <header class="app-bar">
   <button class="menu-btn" aria-label="menu" @click="toggle">☰</button>
-      <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
+      <a href="https://portal.acobrazil.com.br/" target="_blank" rel="noopener noreferrer">
+        <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
+      </a>
       <div class="actions" />
     </header>
     <main class="content">
+      <div class="top-actions">
+        <button class="btn back" @click="() => router.push({ name: 'home' })">← Voltar</button>
+      </div>
       <h1 class="title">Abastecimento</h1>
       <div class="card">
         <header class="list-header">
@@ -172,6 +177,9 @@ onUnmounted(() => {
 .brand { height:24px; justify-self:center; }
 .content { padding:18px; max-width: 1000px; margin:0 auto; width:100%; }
 .title { margin:4px 0 20px; font-size:22px; text-align:left; }
+.top-actions { display:flex; align-items:center; justify-content:flex-start; margin: 6px 0 6px; }
+.btn.back { height:32px; border-radius:8px; border:1px solid #d1d5db; padding:0 10px; background:#fff; cursor:pointer; font-weight:600; font-size:13px; }
+.btn.back:hover { background:#f3f4f6; }
 .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px 18px 24px; }
 .list-header { display:flex; flex-direction:column; gap:14px; margin-bottom:12px; }
 @media (min-width: 640px){ .list-header { flex-direction:row; align-items:center; justify-content:space-between; } }

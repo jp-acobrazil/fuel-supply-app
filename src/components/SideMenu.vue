@@ -39,7 +39,7 @@ onMounted(async () => {
         </div>
         <ul class="menu-list">
           <li class="group">Transporte</li>
-          <li :class="{ active: isActive('/') }" @click="go('/')">Motorista</li>
+          <li :class="{ active: isActive('/') }" @click="go('/')">Inicio</li>
           <li v-if="hasGerenciamentoAccess" :class="{ active: isActive('/gerenciamento') }" @click="go('/gerenciamento')">Gerenciamento</li>
           <li :class="{ active: isActive('/cadastrar') }" @click="go('/cadastrar')">Abastecimento</li>
         </ul>

@@ -45,7 +45,9 @@ function back() { router.push({ name: 'home' }) }
   <div class="page">
     <header class="app-bar">
       <button class="menu-btn" aria-label="menu" @click="toggle">☰</button>
-      <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
+      <a href="https://portal.acobrazil.com.br/" target="_blank" rel="noopener noreferrer">
+        <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
+      </a>
       <div />
     </header>
     <main class="content">

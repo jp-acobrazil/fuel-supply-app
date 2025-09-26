@@ -229,13 +229,18 @@ async function submitSupply() {
   <div class="page">
     <header class="app-bar">
   <button class="menu-btn" aria-label="menu" @click="toggleMenu">☰</button>
-      <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
+      <a href="https://portal.acobrazil.com.br/" target="_blank" rel="noopener noreferrer">
+        <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
+      </a>
       <div class="actions">
         <span class="badge">3</span>
       </div>
     </header>
 
     <main class="content">
+      <div class="top-actions">
+        <button class="btn back" @click="() => router.push({ name: 'home' })">← Voltar</button>
+      </div>
       <h1 class="title">Abastecimento</h1>
       <div v-if="editingId && originalStatus === 'R' && approvalComment" class="rejection-box">
         <strong>Motivo da reprovação:</strong>
@@ -345,6 +350,10 @@ async function submitSupply() {
   margin: 8px 0 16px;
   font-size: 22px;
 }
+
+.top-actions { display:flex; align-items:center; justify-content:flex-start; margin: 6px 0 6px; }
+.btn.back { height:32px; border-radius:8px; border:1px solid #d1d5db; padding:0 10px; background:#fff; cursor:pointer; font-weight:600; font-size:13px; }
+.btn.back:hover { background:#f3f4f6; }
 
 .card {
   background: var(--card-bg, #fff);
