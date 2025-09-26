@@ -433,9 +433,10 @@ async function updateStatus(newStatus) {
     color: #fff;
     border-radius: 6px;
     cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    line-height: 1;
     font-size: 16px;
 }
 

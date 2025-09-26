@@ -14,6 +14,9 @@ const loading = ref(false)
 const error = ref('')
 const supply = ref(null)
 const files = ref([])
+// Visualização de mídia
+const viewing = ref(null) // { name, url, type }
+const showViewer = ref(false)
 
 
 const total = computed(() => {
@@ -30,7 +33,7 @@ async function load() {
     try {
       const { data: arr } = await api.get(`/supplies/${id.value}/files`)
       if (Array.isArray(arr)) files.value = arr
-    } catch {}
+    } catch { }
   } catch (e) {
     error.value = 'Falha ao carregar abastecimento.'
     console.error(e)
@@ -39,6 +42,44 @@ async function load() {
 
 onMounted(load)
 function back() { router.push({ name: 'home' }) }
+
+// Helpers de arquivos e visualização
+function buildFileUrl(name) { return `${api.defaults.baseURL}/supplies/${id.value}/files/${encodeURIComponent(name)}` }
+function fileToObj(name) {
+  const lower = String(name).toLowerCase()
+  const ext = lower.split('.').pop() || ''
+  const imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']
+  const type = imgExts.includes(ext) ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : 'application/octet-stream'
+  return { name, url: buildFileUrl(name), type }
+}
+function isSameFile(rawName, obj) { return obj && obj.name === rawName }
+function matchFirst(keywords) {
+  for (const f of files.value) {
+    const lower = String(f).toLowerCase()
+    if (keywords.some(k => lower.includes(k))) return fileToObj(f)
+  }
+  return null
+}
+const pumpPhoto = computed(() => matchFirst(['pump', 'bomba']))
+const odometerPhoto = computed(() => matchFirst(['odo', 'odometer', 'hodo', 'hodomet']))
+const attachmentFiles = computed(() => {
+  const pump = pumpPhoto.value?.name
+  const odo = odometerPhoto.value?.name
+  return files.value
+    .filter(n => n !== pump && n !== odo)
+    .map(fileToObj)
+})
+const hasRouteData = computed(() => {
+  if (!supply.value) return false
+  const c1 = !!supply.value.stationCnpj
+  const c2 = !!supply.value.stationName
+  const c3 = !!supply.value.obs
+  const c4 = attachmentFiles.value.length > 0
+  return c1 || c2 || c3 || c4
+})
+function openViewer(file) { if (!file) return; viewing.value = file; showViewer.value = true }
+function closeViewer() { showViewer.value = false; viewing.value = null }
+function isImage(file) { return file && file.type?.startsWith('image/') }
 </script>
 
 <template>
@@ -53,8 +94,9 @@ function back() { router.push({ name: 'home' }) }
     <main class="content">
       <div class="card">
         <div class="head">
-          <h2 class="title-inline">Abastecimento <span v-if="supply?.status" class="status-dot" :class="statusClass(supply.status)"></span></h2>
-          <span class="code">#{{ String(id).padStart(4,'0') }}</span>
+          <h2 class="title-inline">Abastecimento <span v-if="supply?.status" class="status-dot"
+              :class="statusClass(supply.status)"></span></h2>
+          <span class="code">#{{ String(id).padStart(4, '0') }}</span>
         </div>
         <div v-if="error" class="msg error">{{ error }}</div>
         <div v-else-if="loading" class="msg">Carregando...</div>
@@ -64,23 +106,38 @@ function back() { router.push({ name: 'home' }) }
             <div class="grid">
               <div class="field"><label>Qtd (L)</label><input disabled :value="supply?.liters" /></div>
               <div class="field"><label>Preço/L</label><input disabled :value="supply?.pricePerLiter" /></div>
-              <div class="field"><label>Total</label><input disabled :value="total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})" /></div>
+              <div class="field"><label>Total</label><input disabled
+                  :value="total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })" /></div>
+              <div class="field img-btn"><label>Visualizar foto da bomba</label><button class="icon-view"
+                  :disabled="!pumpPhoto" @click="openViewer(pumpPhoto)">📷</button></div>
             </div>
           </section>
           <section class="block">
             <h3>Veículo</h3>
             <div class="grid">
-              <div class="field"><label>Placa</label><input disabled :value="supply?.vehicle?.plate || supply?.plate" /></div>
-              <div class="field"><label>Tipo Comb.</label><input disabled :value="supply?.fuelType || supply?.vehicle?.fuelType" /></div>
+              <div class="field"><label>Placa</label><input disabled :value="supply?.vehicle?.plate || supply?.plate" />
+              </div>
+              <div class="field"><label>Tipo Comb.</label><input disabled
+                  :value="supply?.fuelType || supply?.vehicle?.fuelType" /></div>
               <div class="field"><label>Hodômetro</label><input disabled :value="supply?.odometer" /></div>
+              <div class="field img-btn"><label>Visualizar hodômetro</label><button class="icon-view"
+                  :disabled="!odometerPhoto" @click="openViewer(odometerPhoto)">📷</button></div>
             </div>
           </section>
-          <section class="block">
+          <section class="block route-block" :class="{ disabled: !hasRouteData }">
             <h3>Em Rota</h3>
             <div class="grid">
               <div class="field"><label>CNPJ</label><input disabled :value="supply?.stationCnpj" /></div>
               <div class="field"><label>Posto</label><input disabled :value="supply?.stationName" /></div>
               <div class="field full"><label>Observações</label><textarea disabled rows="3" :value="supply?.obs" />
+              </div>
+              <div class="field attachments-field">
+                <label>Outros anexos</label>
+                <div class="attachments-list" v-if="attachmentFiles.length">
+                  <button v-for="f in attachmentFiles" :key="f.name" class="attach-btn" @click="openViewer(f)">{{ f.name
+                    }}</button>
+                </div>
+                <div v-else class="no-attachments">Nenhum</div>
               </div>
             </div>
           </section>
@@ -94,33 +151,334 @@ function back() { router.push({ name: 'home' }) }
         </template>
       </div>
     </main>
+    <teleport to="body">
+      <div v-if="showViewer" class="viewer-backdrop" @click.self="closeViewer">
+        <div class="viewer">
+          <header class="viewer-head">
+            <span class="name">{{ viewing?.name }}</span>
+            <button class="close" @click="closeViewer">✕</button>
+          </header>
+          <div class="viewer-body">
+            <img v-if="isImage(viewing)" :src="viewing.url" :alt="viewing?.name" />
+            <div v-else class="not-image">
+              <p>Preview não disponível.</p>
+              <a :href="viewing?.url" target="_blank" rel="noopener" class="download-link">Download</a>
+            </div>
+          </div>
+          <footer class="viewer-footer">
+            <button class="btn" @click="closeViewer">Fechar</button>
+          </footer>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <style scoped>
-.page { display:flex; flex-direction:column; min-height:100vh; }
-.app-bar { position:sticky; top:0; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:10px 12px; background:#0b5d3b; color:#fff; }
-.menu-btn { background:transparent; border:none; color:#fff; font-size:20px; cursor:pointer; justify-self:start; }
-.brand { height:24px; justify-self:center; }
-.content { padding:16px; max-width:640px; margin:0 auto; width:100%; }
-.card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px 20px 30px; }
-.head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-.title-inline { display:flex; align-items:center; gap:8px; margin:0; font-size:18px; }
-.status-dot { width:14px; height:14px; border-radius:50%; background:#9ca3af; box-shadow:0 0 0 2px #fff,0 0 0 3px #d1d5db; }
-.status-dot.green { background:#059669; }
-.status-dot.red { background:#dc2626; }
-.status-dot.orange { background:#ea8800; }
-.code { font-weight:600; font-size:14px; }
-.block { border:1px solid #e5e7eb; border-radius:8px; padding:14px 14px 12px; margin-bottom:16px; }
-.block h3 { margin:0 0 10px; font-size:15px; font-weight:600; }
-.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px 16px; }
-.field { display:flex; flex-direction:column; gap:4px; }
-.field.full { grid-column:1 / -1; }
-.field label { font-size:11px; text-transform:uppercase; letter-spacing:.5px; font-weight:600; color:#374151; }
-.field input, .field textarea { height:30px; border:1px solid #d1d5db; border-radius:6px; padding:4px 8px; font-size:13px; background:#f8f9fa; }
-.field textarea { height:auto; min-height:70px; resize:vertical; }
-.comment-box { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:10px 12px; border-radius:6px; font-size:13px; line-height:1.4; white-space:pre-wrap; }
-.actions { display:flex; justify-content:flex-end; }
-.btn { height:34px; border-radius:20px; border:1px solid #0b5d3b; background:#fff; padding:0 18px; cursor:pointer; font-size:13px; font-weight:600; }
-.btn:hover { background:#f3f4f6; }
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 10px 12px;
+  background: #0b5d3b;
+  color: #fff;
+}
+
+.menu-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.brand {
+  height: 24px;
+  justify-self: center;
+}
+
+.content {
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px 20px 30px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.title-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+}
+
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #9ca3af;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3px #d1d5db;
+}
+
+.status-dot.green {
+  background: #059669;
+}
+
+.status-dot.red {
+  background: #dc2626;
+}
+
+.status-dot.orange {
+  background: #ea8800;
+}
+
+.code {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.block {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px 14px 12px;
+  margin-bottom: 16px;
+}
+
+.block h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field.full {
+  grid-column: 1 / -1;
+}
+
+.field label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.field input,
+.field textarea {
+  height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  background: #f8f9fa;
+}
+
+.field textarea {
+  height: auto;
+  min-height: 70px;
+  resize: vertical;
+}
+
+.comment-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn {
+  height: 34px;
+  border-radius: 20px;
+  border: 1px solid #0b5d3b;
+  background: #fff;
+  padding: 0 18px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn:hover {
+  background: #f3f4f6;
+}
+
+/* Botões de visualizar imagem */
+.img-btn button {
+  width: 40px;
+  height: 30px;
+  border: 1px solid #0b5d3b;
+  background: #0b5d3b;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 16px;
+}
+
+.img-btn button:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
+  cursor: default;
+}
+
+/* Viewer */
+.viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  padding: 24px;
+}
+
+.viewer {
+  background: #fff;
+  border-radius: 12px;
+  width: min(900px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, .35), 0 4px 12px -4px rgba(0, 0, 0, .25);
+}
+
+.viewer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.viewer-head .name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.viewer-head .close {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.viewer-body {
+  padding: 16px;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.viewer-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+}
+
+.not-image {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.download-link {
+  color: #0b5d3b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.viewer-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Rota e anexos */
+.route-block.disabled {
+  opacity: .55;
+}
+
+.attachments-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachments-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.attach-btn {
+  background: #0b5d3b;
+  color: #fff;
+  border: 1px solid #0b5d3b;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.attach-btn:hover {
+  background: #094d31;
+}
+
+.route-block.disabled .attach-btn {
+  pointer-events: none;
+}
+
+.no-attachments {
+  font-size: 12px;
+  color: #6b7280;
+}
 </style>
