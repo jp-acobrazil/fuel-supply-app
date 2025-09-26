@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import axios from 'axios'
 import HomeWidgets from '../components/HomeWidgets.vue'
 import RecentList from '../components/RecentList.vue'
 import FabActions from '../components/FabActions.vue'
@@ -14,10 +15,12 @@ const abastecimentosHeaders = ['ID', 'Placa', 'Data', 'Valor', 'Status']
 const abastecimentosRows = ref([])
 
 const checklistHeaders = ['ID', 'Placa', 'Data', 'Rota', 'Status']
-const checklistRows = [
-  { id: '#0125', placa: 'OJF4J54', data: '25/09/25', valor: 'Início', statusColor: 'green' },
-  { id: '#0132', placa: 'OJF4J54', data: '28/09/25', valor: 'Fim', statusColor: 'orange' }
-]
+const checklistRows = ref([])
+
+// Totais para os widgets
+const widgetAbastecimentos = ref(0) // total cadastrados
+const widgetViagens = ref(0)        // total checklists route I (START)
+const widgetAbertos = ref(0)        // total checklists status P ou U
 
 function padId(n) { return `#${String(n).padStart(4, '0')}` }
 function formatDate(iso) {
@@ -40,7 +43,8 @@ async function loadAbastecimentos() {
     driverId.value = getCurrentDriverId()
     console.log('Driver ID:', driverId.value)
     const { data } = await api.get(`/supplies/driver/${driverId.value}`)
-    const items = Array.isArray(data) ? data : []
+  const items = Array.isArray(data) ? data : []
+  widgetAbastecimentos.value = items.length
     // ordenar desc por data
     items.sort((a, b) => new Date(b.date) - new Date(a.date))
     const last5 = items.slice(0, 5)
@@ -64,6 +68,59 @@ async function loadAbastecimentos() {
 
 onMounted(loadAbastecimentos)
 
+function routeLabel(code) {
+  const c = String(code || '').toUpperCase()
+  if (c === 'I' || c === 'START') return 'Início'
+  if (c === 'F' || c === 'END') return 'Fim'
+  return '-'
+}
+
+function statusColorChecklist(code) {
+  const c = String(code || '').toUpperCase()
+  if (c === 'F' || c === 'FINISHED' || c === 'E' || c === 'ENDED') return 'green'
+  if (c === 'P' || c === 'PENDING') return 'orange'
+  if (c === 'U' || c === 'UNCONCLUDED') return 'red'
+  return 'gray' // NEW (N) e desconhecidos
+}
+
+async function loadChecklists() {
+  try {
+    if (!driverId.value) {
+      await fetchCurrentUser()
+      driverId.value = getCurrentDriverId()
+    }
+    const did = driverId.value
+    if (!did) {
+      checklistRows.value = []
+      return
+    }
+    const base = 'https://portal.acobrazil.com.br/checklist/checklists/driver/3156'
+    const url = `${base}/${encodeURIComponent(did)}`
+  const { data } = await axios.get(url, { timeout: 15000, withCredentials: false })
+  const items = Array.isArray(data) ? data : []
+  // Widgets: viagens (I) e abertos (P, U)
+  widgetViagens.value = items.filter(it => String(it.route || '').toUpperCase() === 'I').length
+  widgetAbertos.value = items.filter(it => ['P','U'].includes(String(it.status || '').toUpperCase())).length
+    // ordenar por checklistDate desc
+    items.sort((a, b) => new Date(b.checklistDate) - new Date(a.checklistDate))
+    const last5 = items.slice(0, 5)
+    checklistRows.value = last5.map(it => ({
+      id: padId(it.checklistId),
+      rawId: it.checklistId,
+      placa: it.carPlate || '-',
+      data: formatDate(it.checklistDate),
+      valor: routeLabel(it.route),
+      statusColor: statusColorChecklist(it.status),
+      status: it.status,
+    }))
+  } catch (e) {
+    console.error('Erro ao carregar checklists', e)
+    checklistRows.value = []
+  }
+}
+
+onMounted(loadChecklists)
+
 const { toggle } = useSideMenu()
 </script>
 
@@ -82,7 +139,7 @@ const { toggle } = useSideMenu()
     <main class="content">
       <h1 class="title">Transporte</h1>
 
-      <HomeWidgets />
+  <HomeWidgets :checklists="widgetAbastecimentos" :viagens="widgetViagens" :abertos="widgetAbertos" />
 
       <section class="card">
         <h2 class="card-title">Ult. Abastecimentos</h2>

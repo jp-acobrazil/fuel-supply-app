@@ -10,7 +10,7 @@ const props = defineProps({
     <div class="widgets">
         <div class="widget w-checklists">
             <div class="value">{{ props.checklists }}</div>
-            <div class="label">Checklists</div>
+            <div class="label">Abastecimentos</div>
         </div>
         <div class="widget w-viagens">
             <div class="value">{{ props.viagens }}</div>
