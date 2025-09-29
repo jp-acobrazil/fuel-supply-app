@@ -24,7 +24,10 @@ const emRotaEnabled = ref(false)
 const extraAttachments = ref([])
 const extraAttachInput = ref(null)
 function triggerExtraAttach() { extraAttachInput.value?.click() }
-function onExtraAttachChange(e) { extraAttachments.value = Array.from(e.target.files || []) }
+function onExtraAttachChange(e) {
+  const files = Array.from(e.target.files || []).filter(f => (f && f.type && f.type.startsWith('image/')))
+  extraAttachments.value = files
+}
 
 // Side menu
 const { toggle: toggleMenu } = useSideMenu()
@@ -218,7 +221,15 @@ async function submitSupply() {
     router.push({ name: 'home', query: { r: Date.now() } })
   } catch (err) {
     console.error(err)
-    message.value = err?.response?.data?.message || 'Falha ao cadastrar abastecimento.'
+    // Mapeamento de mensagens técnicas para textos amigáveis
+    const rawMsg = err?.response?.data?.message || err?.message || ''
+    if (/Vehicle not found/i.test(rawMsg)) {
+      message.value = 'Não encontramos um veículo com a placa informada. Verifique a placa e tente novamente.'
+      // Se possível, destacar o campo de placa no formulário
+      vehicleRef.value?.setPlateError?.('Não encontrado')
+    } else {
+      message.value = rawMsg || 'Falha ao cadastrar abastecimento.'
+    }
   } finally {
     loading.value = false
   }
@@ -268,11 +279,16 @@ async function submitSupply() {
       </section>
       <section class="card attachments-card">
         <h2 class="card-title">Outros anexos</h2>
-        <div class="attachments-field">
-          <input ref="extraAttachInput" type="file" multiple @change="onExtraAttachChange" style="display:none" />
+        <div class="field file">
+          <span>Foto adicional</span>
+          <input ref="extraAttachInput" type="file" accept="image/*" multiple @change="onExtraAttachChange" style="display:none" />
           <button type="button" class="upload" aria-label="upload" @click="triggerExtraAttach">⬆</button>
-          <small v-if="extraAttachments.length" class="hint">{{ extraAttachments.length }} arquivo(s)
-            selecionado(s)</small>
+          <template v-if="extraAttachments.length === 1">
+            <small class="hint">{{ extraAttachments[0].name }}</small>
+          </template>
+          <template v-else-if="extraAttachments.length > 1">
+            <small class="hint">{{ extraAttachments.length }} foto(s) selecionada(s)</small>
+          </template>
         </div>
       </section>
       <p v-if="message" class="feedback">{{ message }}</p>
@@ -452,23 +468,10 @@ async function submitSupply() {
 }
 .rejection-box p { margin: 4px 0 0; white-space: pre-wrap; }
 
-.attachments-field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.attachments-field .upload {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  background: #0b5d3b;
-  color: #fff;
-  border: none;
-}
-
-.attachments-field .hint {
-  color: #6b7280;
-  font-size: 11px;
-}
+/* Padrão igual aos inputs de foto (pump/odo) */
+.field { display:flex; flex-direction:column; gap:6px; }
+.field>span { font-size:12px; color:#555; }
+.file { align-items:flex-start; }
+.upload { width:44px; height:44px; border-radius:8px; background:#0b5d3b; color:#fff; border:none; }
+.hint { color:#6b7280; font-size:11px; margin-top:4px; }
 </style>

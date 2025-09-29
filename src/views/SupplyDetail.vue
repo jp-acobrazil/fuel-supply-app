@@ -19,6 +19,8 @@ const viewing = ref(null) // { name, url, type }
 const showViewer = ref(false)
 const statusLoading = ref(false)
 const statusMessage = ref('')
+// Toast
+const toast = ref({ show: false, text: '', kind: 'success' })
 // Comentário de aprovação/reprovação (limite 100 chars)
 const approvalComment = ref('')
 const maxComment = 100
@@ -98,6 +100,11 @@ function openViewer(file) { if (!file) return; viewing.value = file; showViewer.
 function closeViewer() { showViewer.value = false; viewing.value = null }
 function isImage(file) { return file && file.type.startsWith('image/') }
 
+function showToast(text, kind = 'success', duration = 1800) {
+    toast.value = { show: true, text, kind }
+    setTimeout(() => { toast.value.show = false }, duration)
+}
+
 async function updateStatus(newStatus) {
     if (!supply.value) return
     statusMessage.value = ''
@@ -119,10 +126,15 @@ async function updateStatus(newStatus) {
         const { data } = await api.patch(`/supplies/${supply.value.id}/status`, payload, { headers: { 'Content-Type': 'application/json' } })
         supply.value = data
         if (data && data.approvalComment) approvalComment.value = data.approvalComment
-        statusMessage.value = newStatus === 'APPROVED' ? 'Abastecimento aprovado.' : 'Abastecimento rejeitado.'
+        const okMsg = newStatus === 'APPROVED' ? 'Abastecimento aprovado.' : 'Abastecimento rejeitado.'
+        statusMessage.value = okMsg
+        showToast(okMsg, newStatus === 'APPROVED' ? 'success' : 'danger')
+        // redirecionar após pequeno delay para permitir ver o toast
+        setTimeout(() => router.push({ name: 'gerenciamento' }), 1200)
     } catch (e) {
         console.error('Falha ao atualizar status', e)
         statusMessage.value = e?.response?.data?.message || 'Erro ao atualizar status.'
+        showToast(statusMessage.value, 'danger')
     } finally { statusLoading.value = false }
 }
 
@@ -225,6 +237,11 @@ async function updateStatus(newStatus) {
                 </template>
             </div>
         </main>
+        <teleport to="body">
+            <div v-if="toast.show" class="toast" :class="toast.kind">
+                {{ toast.text }}
+            </div>
+        </teleport>
         <teleport to="body">
             <div v-if="showViewer" class="viewer-backdrop" @click.self="closeViewer">
                 <div class="viewer">
@@ -497,6 +514,22 @@ async function updateStatus(newStatus) {
     resize: vertical;
     line-height: 1.35;
 }
+
+/* Toast */
+.toast {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: #065f46;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    font-size: 14px;
+}
+.toast.danger { background: #b91c1c; }
+.toast.success { background: #065f46; }
 
 .validation-comment textarea:disabled {
     background: #f3f4f6;

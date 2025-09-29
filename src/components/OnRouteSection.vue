@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 const props = defineProps({
   enabled: { type: Boolean, default: true }
 })
@@ -7,6 +7,15 @@ const props = defineProps({
 const cnpj = ref('')
 const station = ref('')
 const notes = ref('')
+
+// util: mantém apenas números e limita a 14 dígitos
+const cleanCnpj = (v) => (v ?? '').toString().replace(/\D/g, '').slice(0, 14)
+
+// v-model com saneamento automático
+const cnpjModel = computed({
+  get: () => cnpj.value,
+  set: (v) => { cnpj.value = cleanCnpj(v) }
+})
 
 defineExpose({
   getData() {
@@ -20,7 +29,7 @@ defineExpose({
     }
   },
   setData(data = {}) {
-    if ('stationCnpj' in data) cnpj.value = data.stationCnpj ?? ''
+    if ('stationCnpj' in data) cnpj.value = cleanCnpj(data.stationCnpj)
     if ('stationName' in data) station.value = data.stationName ?? ''
     if ('obs' in data) notes.value = data.obs ?? ''
   }
@@ -31,7 +40,14 @@ defineExpose({
   <div class="grid" :class="{ disabled: !props.enabled }">
     <label class="field">
       <span>CNPJ do posto</span>
-  <input v-model="cnpj" :disabled="!props.enabled" inputmode="numeric" placeholder="00.000.000/0000-00" />
+  <input
+    v-model="cnpjModel"
+    :disabled="!props.enabled"
+    inputmode="numeric"
+    maxlength="14"
+    pattern="\\d{14}"
+    placeholder="00.000.000/0000-00"
+  />
     </label>
     <label class="field">
       <span>Nome do posto</span>
