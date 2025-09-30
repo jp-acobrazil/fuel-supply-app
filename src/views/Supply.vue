@@ -18,9 +18,7 @@ const route = useRoute()
 const editingId = ref(route.params.id || null)
 const approvalComment = ref('')
 const originalStatus = ref('')
-// Controle externo para habilitar/desabilitar a seção "Em Rota"
 const emRotaEnabled = ref(false)
-// Anexos gerais (fora da seção Em Rota)
 const extraAttachments = ref([])
 const extraAttachInput = ref(null)
 function triggerExtraAttach() { extraAttachInput.value?.click() }
@@ -29,7 +27,6 @@ function onExtraAttachChange(e) {
   extraAttachments.value = files
 }
 
-// Side menu
 const { toggle: toggleMenu } = useSideMenu()
 
 onMounted(async () => {
@@ -39,7 +36,6 @@ onMounted(async () => {
     // Carregar dados existentes para edição de rejeitado
     try {
       const { data } = await api.get(`/supplies/${editingId.value}`)
-      // Pré-preencher seções
       if (fuelRef.value && data) {
         fuelRef.value.setData?.({ liters: data.liters, pricePerLiter: data.pricePerLiter, fuelType: data.fuelType })
       }
@@ -75,13 +71,12 @@ async function submitSupply() {
     loading.value = true
     message.value = ''
 
-  // Validações obrigatórias nas seções
-  const inEdit = !!editingId.value
-  const fuelValid = fuelRef.value?.validate?.({ allowMissingPhotos: inEdit })
-  const vehicleValid = vehicleRef.value?.validate?.({ allowMissingPhotos: inEdit })
+    const inEdit = !!editingId.value
+    const fuelValid = fuelRef.value?.validate?.({ allowMissingPhotos: inEdit })
+    const vehicleValid = vehicleRef.value?.validate?.({ allowMissingPhotos: inEdit })
     if (!fuelValid || !vehicleValid) {
       message.value = 'Preencha todos os campos obrigatórios marcados com *.'
-      // Próximo tick para garantir atualização de classes
+
       requestAnimationFrame(() => {
         const firstInvalid = document.querySelector('.field.invalid')
         if (firstInvalid) {
@@ -95,7 +90,6 @@ async function submitSupply() {
     const v = vehicleRef.value?.getData?.() || {}
     const r = routeRef.value?.getData?.() || {}
 
-    // Mapear para o payload esperado pela API (dados primários)
     const payload = {
       driverId: driverId.value,
       liters: toNumber(f.liters),
@@ -117,7 +111,6 @@ async function submitSupply() {
 
     let supplyId = editingId.value
     if (editingId.value) {
-      // PUT atualização
       console.log('Atualizando supply ID', editingId.value, 'payload:', payload)
       const { data: updated } = await api.put(`/supplies/${editingId.value}`, payload, { headers: { 'Content-Type': 'application/json' } })
       supplyId = updated.id
@@ -142,10 +135,8 @@ async function submitSupply() {
       const MAX_TOTAL_KB = 1024
       const candidates = [] // manter arquivos processados antes de anexar
 
-      // Comprimir e validar arquivos antes do envio
       if (f.pumpPhotoFile) {
         console.log(`pumpPhoto original: ${formatFileSize(f.pumpPhotoFile.size)}`)
-        // comprimir visando 512 KB de alvo inicial
         let compressedPump = await compressImageToTarget(f.pumpPhotoFile, { targetKB: 512 })
         console.log(`pumpPhoto comprimida: ${formatFileSize(compressedPump.size)}`)
         candidates.push({ key: 'pumpPhoto', file: compressedPump })
@@ -165,7 +156,6 @@ async function submitSupply() {
           console.log(`extra attachment ${i} original: ${formatFileSize(file.size)}`)
           let processedFile = file
           if (file.type.startsWith('image/')) {
-            // alvo mais agressivo, p.ex. 128-256 KB para extras
             processedFile = await compressImageToTarget(file, { targetKB: 256 })
             console.log(`extra attachment ${i} comprimido: ${formatFileSize(processedFile.size)}`)
           }
@@ -239,7 +229,7 @@ async function submitSupply() {
 <template>
   <div class="page">
     <header class="app-bar">
-  <button class="menu-btn" aria-label="menu" @click="toggleMenu">☰</button>
+      <button class="menu-btn" aria-label="menu" @click="toggleMenu">☰</button>
       <a href="https://portal.acobrazil.com.br/" target="_blank" rel="noopener noreferrer">
         <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
       </a>
@@ -281,7 +271,8 @@ async function submitSupply() {
         <h2 class="card-title">Outros anexos</h2>
         <div class="field file">
           <span>Foto adicional</span>
-          <input ref="extraAttachInput" type="file" accept="image/*" multiple @change="onExtraAttachChange" style="display:none" />
+          <input ref="extraAttachInput" type="file" accept="image/*" multiple @change="onExtraAttachChange"
+            style="display:none" />
           <button type="button" class="upload" aria-label="upload" @click="triggerExtraAttach">⬆</button>
           <template v-if="extraAttachments.length === 1">
             <small class="hint">{{ extraAttachments[0].name }}</small>
@@ -316,7 +307,7 @@ async function submitSupply() {
   z-index: 10;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  /* menu | logo (center) | actions */
+
   align-items: center;
   gap: 12px;
   padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
@@ -367,9 +358,27 @@ async function submitSupply() {
   font-size: 22px;
 }
 
-.top-actions { display:flex; align-items:center; justify-content:flex-start; margin: 6px 0 6px; }
-.btn.back { height:32px; border-radius:8px; border:1px solid #d1d5db; padding:0 10px; background:#fff; cursor:pointer; font-weight:600; font-size:13px; }
-.btn.back:hover { background:#f3f4f6; }
+.top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 6px 0 6px;
+}
+
+.btn.back {
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  padding: 0 10px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn.back:hover {
+  background: #f3f4f6;
+}
 
 .card {
   background: var(--card-bg, #fff);
@@ -466,12 +475,39 @@ async function submitSupply() {
   font-size: 14px;
   margin: -4px 0 14px;
 }
-.rejection-box p { margin: 4px 0 0; white-space: pre-wrap; }
 
-/* Padrão igual aos inputs de foto (pump/odo) */
-.field { display:flex; flex-direction:column; gap:6px; }
-.field>span { font-size:12px; color:#555; }
-.file { align-items:flex-start; }
-.upload { width:44px; height:44px; border-radius:8px; background:#0b5d3b; color:#fff; border:none; }
-.hint { color:#6b7280; font-size:11px; margin-top:4px; }
+.rejection-box p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field>span {
+  font-size: 12px;
+  color: #555;
+}
+
+.file {
+  align-items: flex-start;
+}
+
+.upload {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #0b5d3b;
+  color: #fff;
+  border: none;
+}
+
+.hint {
+  color: #6b7280;
+  font-size: 11px;
+  margin-top: 4px;
+}
 </style>

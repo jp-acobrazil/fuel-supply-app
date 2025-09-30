@@ -17,10 +17,9 @@ const abastecimentosRows = ref([])
 const checklistHeaders = ['ID', 'Placa', 'Data', 'Rota', 'Status']
 const checklistRows = ref([])
 
-// Totais para os widgets
-const widgetAbastecimentos = ref(0) // total cadastrados
-const widgetViagens = ref(0)        // total checklists route I (START)
-const widgetAbertos = ref(0)        // total checklists status P ou U
+const widgetAbastecimentos = ref(0)
+const widgetViagens = ref(0)
+const widgetAbertos = ref(0)
 
 function padId(n) { return `#${String(n).padStart(4, '0')}` }
 function formatDate(iso) {
@@ -43,16 +42,16 @@ async function loadAbastecimentos() {
     driverId.value = getCurrentDriverId()
     console.log('Driver ID:', driverId.value)
     const { data } = await api.get(`/supplies/driver/${driverId.value}`)
-  const items = Array.isArray(data) ? data : []
-  widgetAbastecimentos.value = items.length
-    // ordenar desc por data
+    const items = Array.isArray(data) ? data : []
+    widgetAbastecimentos.value = items.length
+
     items.sort((a, b) => new Date(b.date) - new Date(a.date))
     const last5 = items.slice(0, 5)
     abastecimentosRows.value = last5.map((s) => {
       const valor = (Number(s.liters) || 0) * (Number(s.pricePerLiter) || 0)
       return {
-        id: padId(s.id), // exibido
-        rawId: s.id, // usado para rota
+        id: padId(s.id),
+        rawId: s.id,
         placa: s?.vehicle?.plate || '-',
         data: formatDate(s.date),
         valor: formatCurrency(valor),
@@ -80,7 +79,7 @@ function statusColorChecklist(code) {
   if (c === 'F' || c === 'FINISHED' || c === 'E' || c === 'ENDED') return 'green'
   if (c === 'P' || c === 'PENDING') return 'orange'
   if (c === 'U' || c === 'UNCONCLUDED') return 'red'
-  return 'gray' // NEW (N) e desconhecidos
+  return 'gray'
 }
 
 async function loadChecklists() {
@@ -96,12 +95,12 @@ async function loadChecklists() {
     }
     const base = 'https://portal.acobrazil.com.br/checklist/checklists/driver/3156'
     const url = `${base}/${encodeURIComponent(did)}`
-  const { data } = await axios.get(url, { timeout: 15000, withCredentials: false })
-  const items = Array.isArray(data) ? data : []
-  // Widgets: viagens (I) e abertos (P, U)
-  widgetViagens.value = items.filter(it => String(it.route || '').toUpperCase() === 'I').length
-  widgetAbertos.value = items.filter(it => ['P','U'].includes(String(it.status || '').toUpperCase())).length
-    // ordenar por checklistDate desc
+    const { data } = await axios.get(url, { timeout: 15000, withCredentials: false })
+    const items = Array.isArray(data) ? data : []
+
+    widgetViagens.value = items.filter(it => String(it.route || '').toUpperCase() === 'I').length
+    widgetAbertos.value = items.filter(it => ['P', 'U'].includes(String(it.status || '').toUpperCase())).length
+
     items.sort((a, b) => new Date(b.checklistDate) - new Date(a.checklistDate))
     const last5 = items.slice(0, 5)
     checklistRows.value = last5.map(it => ({
@@ -127,7 +126,7 @@ const { toggle } = useSideMenu()
 <template>
   <div class="page">
     <header class="app-bar">
-  <button class="menu-btn" aria-label="menu" @click="toggle">☰</button>
+      <button class="menu-btn" aria-label="menu" @click="toggle">☰</button>
       <a href="https://portal.acobrazil.com.br/" target="_blank" rel="noopener noreferrer">
         <img src="/src/assets/logoacobrazil.png" class="brand" alt="logo" />
       </a>
@@ -139,7 +138,7 @@ const { toggle } = useSideMenu()
     <main class="content">
       <h1 class="title">Transporte</h1>
 
-  <HomeWidgets :checklists="widgetAbastecimentos" :viagens="widgetViagens" :abertos="widgetAbertos" />
+      <HomeWidgets :checklists="widgetAbastecimentos" :viagens="widgetViagens" :abertos="widgetAbertos" />
 
       <section class="card">
         <h2 class="card-title">Ult. Abastecimentos</h2>
@@ -172,7 +171,7 @@ const { toggle } = useSideMenu()
   z-index: 10;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  /* menu | logo (center) | actions */
+
   align-items: center;
   gap: 12px;
   padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
@@ -242,5 +241,4 @@ const { toggle } = useSideMenu()
   height: 96px;
 }
 
-/* Footer de ações substituído por FABs */
 </style>
