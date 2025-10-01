@@ -98,6 +98,7 @@ async function submitSupply() {
       fuelType: v.fuelType,
       odometer: toNumber(v.odometer),
       stationCnpj: onlyDigits(r.stationCnpj),
+      stationName: r.stationName,
       obs: r.obs,
     }
 

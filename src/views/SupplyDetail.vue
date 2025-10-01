@@ -177,8 +177,8 @@ async function updateStatus(newStatus) {
                         <h3>Veículo</h3>
                         <div class="grid vehicle">
                             <div class="field"><label>Placa</label><input disabled
-                                    :value="supply?.vehicle?.plate || supply?.plate" /></div>
-                            <div class="field"><label>Tipo do veículo</label><input disabled value="-" /></div>
+                                    :value="supply?.vehicle?.plate" /></div>
+                            <div class="field"><label>Veículo</label><input disabled :value="supply?.vehicle?.description" /></div>
                             <div class="field"><label>Tipo de combust.</label><input disabled
                                     :value="supply?.fuelType || supply?.vehicle?.fuelType" /></div>
                             <div class="field"><label>Hodômetro</label><input disabled :value="supply?.odometer" />
