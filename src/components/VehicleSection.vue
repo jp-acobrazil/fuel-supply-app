@@ -69,7 +69,12 @@ let infoDebounce = 0
 let lastRequestKey = ''
 
 function sanitizePlateForLookup(p) {
-  return String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7)
+  const s = String(p ?? '').trim().toUpperCase()
+  // remover hífens e espaços internos explícitos
+  const noSep = s.replace(/[-\s]/g, '')
+  // manter apenas letras e números (A-Z 0-9)
+  const alnum = noSep.replace(/[^A-Z0-9]/g, '')
+  return alnum.slice(0, 7)
 }
 
 function formatDate(iso) {
@@ -139,7 +144,7 @@ const lastOdo = computed(() => {
   <div class="grid">
     <label class="field" :class="{ invalid: plateError }">
       <span>Placa do veículo *</span>
-      <input class="small truncate" ref="plateInput" v-model="plate" :title="plate" placeholder="ABC-1234"
+      <input class="small truncate" ref="plateInput" v-model="plate" :title="plate" placeholder="ACO1B23"
         autocapitalize="characters" @input="plate = plate.toUpperCase(); plateError = ''" />
       <small v-if="plateError" class="err">{{ plateError }}</small>
     </label>

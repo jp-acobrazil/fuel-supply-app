@@ -31,9 +31,14 @@ function formatCurrency(v) {
     return (isNaN(n) ? 0 : n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 function formatDate(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('pt-BR') }
+function formatDateTime(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleString('pt-BR') }
 const total = computed(() => {
     if (!supply.value) return 0
     return (Number(supply.value.liters) || 0) * (Number(supply.value.pricePerLiter) || 0)
+})
+const isFinalStatus = computed(() => {
+    const s = (supply.value?.status || '').toUpperCase()
+    return s === 'A' || s === 'APPROVED' || s === 'R' || s === 'REJECTED'
 })
 
 async function load() {
@@ -209,6 +214,7 @@ async function updateStatus(newStatus) {
                             </div>
                         </div>
                     </div>
+                    <hr class="section-divider" />
                     <div class="status-bar">
                         <div class="validation-comment" v-if="supply && (supply.status === 'C' || supply.status === 'CREATED' || supply.status === 'PENDING')">
                             <label for="approvalComment">Comentário (opcional ao aprovar / obrigatório ao rejeitar)</label>
@@ -218,9 +224,19 @@ async function updateStatus(newStatus) {
                                 <span :class="{ limit: remainingChars <= 10 }">{{ remainingChars }} restantes</span>
                             </div>
                         </div>
-                        <div class="validation-comment readonly" v-else-if="approvalComment">
+                        <div class="grid approval-grid" v-if="isFinalStatus">
+                            <div class="field">
+                                <label>Aprovador</label>
+                                <input disabled :value="supply?.approverName || '-'" />
+                            </div>
+                            <div class="field">
+                                <label>Data e hora</label>
+                                <input disabled :value="formatDateTime(supply?.approvalDate) || '-'" />
+                            </div>
+                        </div>
+                        <div class="field" v-if="isFinalStatus">
                             <label>Comentário do avaliador</label>
-                            <div class="comment-readonly">{{ approvalComment }}</div>
+                            <textarea disabled :value="approvalComment || ''" rows="3"></textarea>
                         </div>
                         <div class="status-info">
                             <span v-if="statusLoading" class="loading-inline">Enviando...</span>
@@ -577,6 +593,12 @@ async function updateStatus(newStatus) {
     font-weight: 500;
 }
 
+.approval-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px 12px;
+}
+
 .btn {
     height: 34px;
     border-radius: 20px;
@@ -727,6 +749,12 @@ async function updateStatus(newStatus) {
 .no-attachments {
     font-size: 12px;
     color: #6b7280;
+}
+
+.section-divider {
+    border: 0;
+    border-top: 1px solid #e5e7eb;
+    margin: 10px 0 16px;
 }
 
 @media (max-width:640px) {
